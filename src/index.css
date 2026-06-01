@@ -1630,6 +1630,48 @@ body {
   transform: translateY(-2px);
 }
 
+.chart-dark-card {
+  background-color: #0b0b0f !important;
+  border-color: #1c1c24 !important;
+  color: var(--white) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+}
+
+.chart-dark-card .analytics-card-title {
+  color: var(--white) !important;
+}
+
+.chart-dark-card .chart-grid-line {
+  stroke: rgba(255, 255, 255, 0.07) !important;
+}
+
+.chart-dark-card .chart-label-x,
+.chart-dark-card .chart-label-y {
+  fill: #8e8e93 !important;
+}
+
+.chart-dark-card .chart-line {
+  stroke: #ffffff !important;
+  stroke-width: 2.5px !important;
+}
+
+.chart-dark-card .chart-area {
+  fill: url(#chart-dark-gradient) !important;
+  opacity: 0.3 !important;
+}
+
+.chart-dark-card .chart-dot {
+  fill: #ffffff !important;
+  stroke: var(--purple) !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s, r 0.2s;
+}
+
+.chart-dark-card .chart-dot:hover {
+  opacity: 1 !important;
+  r: 6 !important;
+}
+
 .analytics-card-title {
   font-size: 1.1rem;
   font-weight: 700;
@@ -1671,12 +1713,14 @@ body {
   fill: var(--white);
   stroke: var(--purple);
   stroke-width: 3;
-  transition: r 0.2s;
+  opacity: 0;
+  transition: opacity 0.2s, r 0.2s;
   cursor: pointer;
 }
 
 .chart-dot:hover {
-  r: 7;
+  opacity: 1;
+  r: 6;
 }
 
 .chart-grid-line {
@@ -1784,6 +1828,27 @@ body {
 /* Recent Clicks Table */
 .recent-visits-table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 240px;
+}
+
+.analytics-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .analytics-top-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .analytics-top-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .visits-table {

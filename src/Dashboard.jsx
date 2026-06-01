@@ -183,11 +183,16 @@ export default function Dashboard({ user, token, onLogout }) {
               <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.4"/>
               <stop offset="100%" stopColor="var(--purple)" stopOpacity="0.0"/>
             </linearGradient>
+            <linearGradient id="chart-dark-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45"/>
+              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0"/>
+            </linearGradient>
           </defs>
 
           {/* Grid lines */}
           <line x1={padding} y1={padding} x2={width - padding} y2={padding} className="chart-grid-line" />
-          <line x1={padding} y1={(height) / 2} x2={width - padding} y2={(height) / 2} className="chart-grid-line" />
+          <line x1={padding} y1={padding + (height - 2 * padding) / 3} x2={width - padding} y2={padding + (height - 2 * padding) / 3} className="chart-grid-line" />
+          <line x1={padding} y1={padding + 2 * (height - 2 * padding) / 3} x2={width - padding} y2={padding + 2 * (height - 2 * padding) / 3} className="chart-grid-line" />
           <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} className="chart-grid-line" />
 
           {/* Fill Area */}
@@ -218,7 +223,8 @@ export default function Dashboard({ user, token, onLogout }) {
 
           {/* Y Axis Labels (Clicks Count) */}
           <text x={padding - 10} y={padding + 4} className="chart-label-y">{maxVal}</text>
-          <text x={padding - 10} y={(height) / 2 + 4} className="chart-label-y">{Math.round(maxVal / 2)}</text>
+          <text x={padding - 10} y={padding + (height - 2 * padding) / 3 + 4} className="chart-label-y">{Math.round(maxVal * 2 / 3)}</text>
+          <text x={padding - 10} y={padding + 2 * (height - 2 * padding) / 3 + 4} className="chart-label-y">{Math.round(maxVal / 3)}</text>
           <text x={padding - 10} y={height - padding + 4} className="chart-label-y">0</text>
         </svg>
       </div>
@@ -697,50 +703,10 @@ export default function Dashboard({ user, token, onLogout }) {
                           </div>
                         </div>
 
-                        {/* SVG Chart & Referrers Grid */}
-                        <div className="analytics-grid-top">
-                          {/* SVG Line Chart */}
-                          <div className="analytics-card">
-                            <h3 className="analytics-card-title">
-                              <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 7 Days)
-                            </h3>
-                            {renderSvgLineChart(analyticsData.analytics.clickHistory)}
-                          </div>
-
-                          {/* Referrers list */}
-                          <div className="analytics-card">
-                            <h3 className="analytics-card-title">
-                              <Globe size={18} style={{ color: 'var(--purple)' }} /> Traffic Channels
-                            </h3>
-                            {Object.keys(analyticsData.analytics.referrers).length === 0 ? (
-                              <div className="no-data" style={{ padding: '2rem' }}>No referrer data logged yet.</div>
-                            ) : (
-                              <div className="breakdown-list">
-                                {Object.entries(analyticsData.analytics.referrers)
-                                  .sort((a, b) => b[1] - a[1])
-                                  .slice(0, 5)
-                                  .map(([source, count]) => {
-                                    const percent = (count / analyticsData.totalClicks) * 100;
-                                    return (
-                                      <div key={source} className="breakdown-item">
-                                        <div className="breakdown-label-wrap">
-                                          <span>{source}</span>
-                                        </div>
-                                        <div className="breakdown-bar-container">
-                                          <div className="breakdown-bar" style={{ width: `${percent}%` }}></div>
-                                        </div>
-                                        <span className="breakdown-value">{count}</span>
-                                      </div>
-                                    );
-                                  })}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Devices, Browsers, and Visitors Tables */}
-                        <div className="analytics-grid-top" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                          {/* Device & Browser Card */}
+                        {/* 3-Column Grid above the Timeline */}
+                        <div className="analytics-top-grid">
+                          
+                          {/* 1. Audience Tech Breakdown */}
                           <div className="analytics-card">
                             <h3 className="analytics-card-title">Audience Tech Breakdown</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -790,7 +756,37 @@ export default function Dashboard({ user, token, onLogout }) {
                             </div>
                           </div>
 
-                          {/* Recent Clicks list */}
+                          {/* 2. Traffic Channels */}
+                          <div className="analytics-card">
+                            <h3 className="analytics-card-title">
+                              <Globe size={18} style={{ color: 'var(--purple)' }} /> Traffic Channels
+                            </h3>
+                            {Object.keys(analyticsData.analytics.referrers).length === 0 ? (
+                              <div className="no-data" style={{ padding: '2rem' }}>No referrer data logged yet.</div>
+                            ) : (
+                              <div className="breakdown-list">
+                                {Object.entries(analyticsData.analytics.referrers)
+                                  .sort((a, b) => b[1] - a[1])
+                                  .slice(0, 5)
+                                  .map(([source, count]) => {
+                                    const percent = (count / analyticsData.totalClicks) * 100;
+                                    return (
+                                      <div key={source} className="breakdown-item">
+                                        <div className="breakdown-label-wrap">
+                                          <span>{source}</span>
+                                        </div>
+                                        <div className="breakdown-bar-container">
+                                          <div className="breakdown-bar" style={{ width: `${percent}%` }}></div>
+                                        </div>
+                                        <span className="breakdown-value">{count}</span>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3. Recent Referrals Log */}
                           <div className="analytics-card">
                             <h3 className="analytics-card-title">Recent Referrals Log</h3>
                             {analyticsData.analytics.recentVisits.length === 0 ? (
@@ -827,6 +823,14 @@ export default function Dashboard({ user, token, onLogout }) {
                               </div>
                             )}
                           </div>
+                        </div>
+
+                        {/* SVG Line Chart (Clicks Timeline) below in a full-width card with white background */}
+                        <div className="analytics-card" style={{ width: '100%' }}>
+                          <h3 className="analytics-card-title">
+                            <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 7 Days)
+                          </h3>
+                          {renderSvgLineChart(analyticsData.analytics.clickHistory)}
                         </div>
                       </div>
                     )}

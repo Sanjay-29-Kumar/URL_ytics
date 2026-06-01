@@ -144,7 +144,7 @@ export default function AuthPage({ mode, onBack, onSuccess }) {
             <div className="form-extra-row">
               <label className="form-checkbox-label">
                 <input type="checkbox" style={{ accentColor: 'var(--purple)' }} />
-                <span>Remember for 30 days</span>
+                <span>Remember</span>
               </label>
               <span className="form-link" onClick={() => alert('Password reset feature is mock simulated!')}>
                 Forgot password
@@ -152,15 +152,15 @@ export default function AuthPage({ mode, onBack, onSuccess }) {
             </div>
 
             {/* Submit Button */}
-            <button 
-              type="submit" 
-              className="auth-submit-btn" 
-              style={{ 
-                padding: '0.85rem', 
-                borderRadius: '12px', 
-                marginTop: '0', 
-                backgroundColor: 'var(--purple)' 
-              }} 
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              style={{
+                padding: '0.85rem',
+                borderRadius: '12px',
+                marginTop: '0',
+                backgroundColor: 'var(--purple)'
+              }}
               disabled={loading}
             >
               {loading ? 'Authenticating...' : activeTab === 'login' ? 'Sign in' : 'Create account'}
@@ -201,9 +201,9 @@ export default function AuthPage({ mode, onBack, onSuccess }) {
 
       {/* Right Column: Illustration Section */}
       <div className="auth-page-right">
-        <img 
-          src={activeTab === 'login' ? loginSvg : shortenerSvg} 
-          className="auth-page-illustration" 
+        <img
+          src={activeTab === 'login' ? loginSvg : shortenerSvg}
+          className="auth-page-illustration"
           alt="Authentication Illustration"
         />
       </div>
