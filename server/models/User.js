@@ -12,6 +12,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password hash is required']
   },
+  name: {
+    type: String,
+    default: ''
+  },
+  phone: {
+    type: String,
+    default: ''
+  },
+  profilePicture: {
+    type: String,
+    default: ''
+  },
+  smsAlerts: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

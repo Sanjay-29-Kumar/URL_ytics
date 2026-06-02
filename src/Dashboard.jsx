@@ -1,21 +1,99 @@
-import { useState, useEffect } from 'react';
-import { 
-  Plus, LogOut, Link2, Copy, Trash2, QrCode, BarChart3, ChevronLeft, 
+import { useState, useEffect, useRef } from 'react';
+import {
+  Plus, LogOut, Link2, Copy, Trash2, QrCode, BarChart3, ChevronLeft,
   Globe, Smartphone, Laptop, Tablet, AlertCircle, Calendar, ArrowRight,
   TrendingUp, Check, Download, LayoutDashboard, User
 } from 'lucide-react';
+import defaultProfilePng from './assets/profile.png';
 
 export default function Dashboard({ user, token, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [urls, setUrls] = useState([]);
+
+  // Profile states
+  const [currentUser, setCurrentUser] = useState(user);
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profilePic, setProfilePic] = useState(user?.profilePicture || '');
+  const [smsAlerts, setSmsAlerts] = useState(user?.smsAlerts || false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const fileInputRef = useRef(null);
+
+  // Sync profile states with user changes
+  useEffect(() => {
+    setCurrentUser(user);
+  }, [user]);
+
+  useEffect(() => {
+    if (currentUser) {
+      setProfileName(currentUser.name || '');
+      setProfilePhone(currentUser.phone || '');
+      setProfileEmail(currentUser.email || '');
+      setProfilePic(currentUser.profilePicture || '');
+      setSmsAlerts(currentUser.smsAlerts || false);
+    }
+  }, [currentUser]);
+
+  // Profile Save handler
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    setProfileSuccess('');
+    setProfileError('');
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: profileName,
+          phone: profilePhone,
+          profilePicture: profilePic,
+          smsAlerts: smsAlerts
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfileSuccess('Profile saved successfully!');
+        setCurrentUser(data.user);
+        localStorage.setItem('urlytics_user', JSON.stringify(data.user));
+      } else {
+        setProfileError(data.error || 'Failed to save profile');
+      }
+    } catch (err) {
+      setProfileError('Failed to connect to the server');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Handle Profile Picture file selection
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        setProfileError('Image size should be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePic(reader.result); // Base64 data URL
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const [selectedUrlId, setSelectedUrlId] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
-  
+
   // Link Builder states
   const [newLongUrl, setNewLongUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
   const [newTitle, setNewTitle] = useState('');
-  
+
   // Interactive UI states
   const [activeQrId, setActiveQrId] = useState(null);
   const [copiedUrlId, setCopiedUrlId] = useState(null);
@@ -153,17 +231,17 @@ export default function Dashboard({ user, token, onLogout }) {
   const renderSvgLineChart = (clickHistory) => {
     if (!clickHistory || clickHistory.length === 0) return null;
 
-    const width = 600;
+    const width = 1000;
     const height = 180;
-    
+
     // Custom paddings to maximize graph size
-    const paddingLeft = 30;
-    const paddingRight = 10;
+    const paddingLeft = 40;
+    const paddingRight = 15;
     const paddingTop = 15;
     const paddingBottom = 25;
-    
+
     const maxVal = Math.max(...clickHistory.map(h => h.count), 4); // ensure min scale height
-    
+
     // Calculate points
     const points = clickHistory.map((h, i) => {
       const x = paddingLeft + (i * (width - paddingLeft - paddingRight) / (clickHistory.length - 1));
@@ -176,21 +254,21 @@ export default function Dashboard({ user, token, onLogout }) {
     }, '');
 
     // Area data (close the path to fill background gradient)
-    const areaData = points.length > 0 
-      ? `${pathData} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z` 
+    const areaData = points.length > 0
+      ? `${pathData} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`
       : '';
 
     return (
       <div className="chart-container">
-        <svg viewBox={`0 0 ${width} ${height}`} className="chart-svg">
+        <svg viewBox={`0 0 ${width} ${height}`} className="chart-svg" preserveAspectRatio="none">
           <defs>
             <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.4"/>
-              <stop offset="100%" stopColor="var(--purple)" stopOpacity="0.0"/>
+              <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="var(--purple)" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="chart-dark-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45"/>
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0"/>
+              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
@@ -217,7 +295,7 @@ export default function Dashboard({ user, token, onLogout }) {
 
           {/* X Axis Labels (Dates) */}
           {points.map((p, i) => {
-            if (i % 5 !== 0 && i !== points.length - 1) return null;
+            if (i % 2 !== 0 && i !== points.length - 1) return null;
             const dateObj = new Date(p.date);
             const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return (
@@ -248,7 +326,7 @@ export default function Dashboard({ user, token, onLogout }) {
   return (
     <div className="dashboard-container">
       <div className="dashboard-layout">
-        
+
         {/* Collapsible Left Sidebar */}
         <aside className="dashboard-sidebar">
           {/* Logo row (Link icon in theme purple instead of leaf) */}
@@ -293,7 +371,13 @@ export default function Dashboard({ user, token, onLogout }) {
               }}
               title="Profile"
             >
-              <span className="nav-item-icon"><User size={20} /></span>
+              <span className="nav-item-icon">
+                {currentUser?.profilePicture ? (
+                  <img src={currentUser.profilePicture} alt="Avatar" style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <User size={20} />
+                )}
+              </span>
               <span className="nav-item-text">Profile</span>
             </div>
           </div>
@@ -301,25 +385,32 @@ export default function Dashboard({ user, token, onLogout }) {
 
         {/* Right Content Area */}
         <div className="dashboard-main-wrapper">
-          
+
           {/* Sticky Navbar */}
           <header className="dashboard-navbar">
             <h2 className="navbar-page-title">
-              {activeTab === 'dashboard' ? 'URLytics' : 
-               activeTab === 'qrcodes' ? 'QR Codes' : 
-               activeTab === 'links' ? 'My Links' : 
-               activeTab === 'analytics' ? 'Analytics' : 
-               activeTab === 'profile' ? 'Profile' : 
-               activeTab}
+              {activeTab === 'dashboard' ? (
+                <>URL<span style={{ color: 'var(--purple)', fontFamily: 'var(--font-sans)' }}>ytics</span></>
+              ) : (
+                activeTab === 'qrcodes' ? 'QR Codes' :
+                  activeTab === 'links' ? 'My Links' :
+                    activeTab === 'analytics' ? 'Analytics' :
+                      activeTab === 'profile' ? 'Profile' :
+                        activeTab
+              )}
             </h2>
 
             <div className="navbar-right">
               {/* User Email Badge */}
               <div className="user-badge-wrap">
-                <span className="user-badge-avatar">
-                  {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
-                </span>
-                <span>{user?.email}</span>
+                {currentUser?.profilePicture ? (
+                  <img src={currentUser.profilePicture} alt="Avatar" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <span className="user-badge-avatar">
+                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : (currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U')}
+                  </span>
+                )}
+                <span>{currentUser?.name || currentUser?.email}</span>
               </div>
             </div>
           </header>
@@ -384,8 +475,8 @@ export default function Dashboard({ user, token, onLogout }) {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                                 <span className="link-stats-badge">{url.clicksCount} clicks</span>
-                                <button 
-                                  className="btn-purple" 
+                                <button
+                                  className="btn-purple"
                                   style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
                                   onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }}
                                 >
@@ -502,8 +593,8 @@ export default function Dashboard({ user, token, onLogout }) {
                               {url.clicksCount} clicks
                             </span>
 
-                            <button 
-                              className="btn-icon-only" 
+                            <button
+                              className="btn-icon-only"
                               style={{ position: 'relative' }}
                               onClick={() => setActiveQrId(isQrOpen ? null : url.id)}
                               title="QR Code"
@@ -513,7 +604,7 @@ export default function Dashboard({ user, token, onLogout }) {
                                 <div className="qr-container" onClick={(e) => e.stopPropagation()}>
                                   <button className="qr-close-btn" onClick={() => setActiveQrId(null)}>Close</button>
                                   <img src={qrImgUrl} alt="QR Code Link" width="120" height="120" />
-                                  <a 
+                                  <a
                                     href={qrImgUrl}
                                     target="_blank"
                                     rel="noreferrer"
@@ -534,24 +625,24 @@ export default function Dashboard({ user, token, onLogout }) {
                               )}
                             </button>
 
-                            <button 
-                              className="btn-icon-only" 
+                            <button
+                              className="btn-icon-only"
                               onClick={() => handleCopyLink(url.id, shortUrl)}
                               title="Copy link"
                             >
                               {isCopied ? <Check size={18} style={{ color: '#10b981' }} /> : <Copy size={18} />}
                             </button>
 
-                            <button 
-                              className="btn-icon-only" 
+                            <button
+                              className="btn-icon-only"
                               onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }}
                               title="View Analytics"
                             >
                               <BarChart3 size={18} />
                             </button>
 
-                            <button 
-                              className="btn-icon-only" 
+                            <button
+                              className="btn-icon-only"
                               onClick={() => handleDeleteUrl(url.id)}
                               title="Delete"
                             >
@@ -589,16 +680,16 @@ export default function Dashboard({ user, token, onLogout }) {
                         {urls.map(url => {
                           const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
                           return (
-                            <div 
-                              key={url.id} 
+                            <div
+                              key={url.id}
                               className="analytics-url-card"
                               onClick={() => setSelectedUrlId(url.id)}
                             >
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', minWidth: 0 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                                  <span 
-                                    className="link-title" 
-                                    style={{ fontSize: '1.1rem', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexGrow: 1 }} 
+                                  <span
+                                    className="link-title"
+                                    style={{ fontSize: '1.1rem', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexGrow: 1 }}
                                     title={url.title}
                                   >
                                     {url.title}
@@ -613,8 +704,8 @@ export default function Dashboard({ user, token, onLogout }) {
                                   <span className="link-short" style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--purple)' }}>
                                     {shortUrl}
                                   </span>
-                                  <span 
-                                    className="link-long" 
+                                  <span
+                                    className="link-long"
                                     style={{ fontSize: '0.8rem', color: 'var(--gray)', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                                     title={url.longUrl}
                                   >
@@ -633,8 +724,8 @@ export default function Dashboard({ user, token, onLogout }) {
                                     clicks
                                   </span>
                                 </div>
-                                <button 
-                                  className="btn-purple" 
+                                <button
+                                  className="btn-purple"
                                   style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '8px' }}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -667,8 +758,8 @@ export default function Dashboard({ user, token, onLogout }) {
                               Analytics: {analyticsData.url.title}
                             </h2>
                             <div className="link-actions-group">
-                              <button 
-                                className="btn-purple" 
+                              <button
+                                className="btn-purple"
                                 onClick={() => handleCopyLink(analyticsData.url.id, `${window.location.origin}/r/${analyticsData.url.shortCode}`)}
                               >
                                 {copiedUrlId === analyticsData.url.id ? 'Copied!' : 'Copy Short URL'}
@@ -690,28 +781,28 @@ export default function Dashboard({ user, token, onLogout }) {
                           <div className="stat-block">
                             <div className="stat-block-label">Top Referrer Source</div>
                             <div className="stat-block-value" style={{ fontSize: '1.3rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {Object.keys(analyticsData.analytics.referrers).sort((a,b) => analyticsData.analytics.referrers[b] - analyticsData.analytics.referrers[a])[0] || 'Direct'}
+                              {Object.keys(analyticsData.analytics.referrers).sort((a, b) => analyticsData.analytics.referrers[b] - analyticsData.analytics.referrers[a])[0] || 'Direct'}
                             </div>
                           </div>
 
                           <div className="stat-block">
                             <div className="stat-block-label">Primary Device</div>
                             <div className="stat-block-value" style={{ fontSize: '1.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              {Object.keys(analyticsData.analytics.devices).sort((a,b) => analyticsData.analytics.devices[b] - analyticsData.analytics.devices[a])[0] || 'Desktop'}
+                              {Object.keys(analyticsData.analytics.devices).sort((a, b) => analyticsData.analytics.devices[b] - analyticsData.analytics.devices[a])[0] || 'Desktop'}
                             </div>
                           </div>
 
                           <div className="stat-block">
                             <div className="stat-block-label">Top Browser</div>
                             <div className="stat-block-value" style={{ fontSize: '1.3rem' }}>
-                              {Object.keys(analyticsData.analytics.browsers).sort((a,b) => analyticsData.analytics.browsers[b] - analyticsData.analytics.browsers[a])[0] || 'Chrome'}
+                              {Object.keys(analyticsData.analytics.browsers).sort((a, b) => analyticsData.analytics.browsers[b] - analyticsData.analytics.browsers[a])[0] || 'Chrome'}
                             </div>
                           </div>
                         </div>
 
                         {/* 3-Column Grid above the Timeline */}
                         <div className="analytics-top-grid">
-                          
+
                           {/* 1. Audience Tech Breakdown */}
                           <div className="analytics-card">
                             <h3 className="analytics-card-title">Audience Tech Breakdown</h3>
@@ -834,7 +925,7 @@ export default function Dashboard({ user, token, onLogout }) {
                         {/* SVG Line Chart (Clicks Timeline) below in a full-width card with white background */}
                         <div className="analytics-card timeline-card" style={{ width: '100%' }}>
                           <h3 className="analytics-card-title">
-                            <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 30 Days)
+                            <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 15 Days)
                           </h3>
                           {renderSvgLineChart(analyticsData.analytics.clickHistory)}
                         </div>
@@ -867,20 +958,20 @@ export default function Dashboard({ user, token, onLogout }) {
                           <a href={shortUrl} target="_blank" rel="noreferrer" className="link-short" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
                             {url.shortCode}
                           </a>
-                          
+
                           <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px dashed var(--border-color)' }}>
                             <img src={qrImgUrl} alt="QR Code" width="160" height="160" style={{ display: 'block' }} />
                           </div>
-                          
+
                           <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
-                            <button 
-                              className="btn-purple-secondary" 
+                            <button
+                              className="btn-purple-secondary"
                               style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
                               onClick={() => handleCopyLink(url.id, shortUrl)}
                             >
                               {copiedUrlId === url.id ? 'Copied!' : 'Copy Link'}
                             </button>
-                            <a 
+                            <a
                               href={qrImgUrl}
                               target="_blank"
                               rel="noreferrer"
@@ -901,53 +992,187 @@ export default function Dashboard({ user, token, onLogout }) {
 
             {/* TAB 5: Profile Panel */}
             {activeTab === 'profile' && (
-              <div style={{ maxWidth: '600px' }}>
-                <div className="analytics-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '3rem' }}>
-                  <div 
-                    style={{
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--purple)',
-                      color: 'var(--white)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '2.5rem',
-                      fontWeight: 700,
-                      marginBottom: '1.5rem',
-                      boxShadow: 'var(--glow-purple)'
-                    }}
-                  >
-                    {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
-                  </div>
-
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--black)' }}>{user?.email}</h3>
-                  <p style={{ color: 'var(--gray)', fontSize: '0.9rem', marginBottom: '2rem' }}>Registered User</p>
-
-                  <div 
-                    style={{
-                      width: '100%',
-                      borderTop: '1px solid var(--border-color)',
-                      borderBottom: '1px solid var(--border-color)',
-                      padding: '1.5rem 0',
-                      marginBottom: '2rem',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
-                      <span style={{ color: 'var(--gray)', fontWeight: 500 }}>Email Address</span>
-                      <span style={{ fontWeight: 600, color: 'var(--soft-black)' }}>{user?.email}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--gray)', fontWeight: 500 }}>Account Type</span>
-                      <span style={{ fontWeight: 600, color: 'var(--purple)' }}>Free Account</span>
+              <div className="profile-split-card analytics-card" style={{ padding: 0, overflow: 'hidden' }}>
+                {/* Left Column: Profile Picture / Photo Manager */}
+                <div className="profile-left-col">
+                  <div style={{ flexGrow: 1, position: 'relative', overflow: 'hidden' }}>
+                    <img 
+                      src={profilePic || defaultProfilePng} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      alt="Profile Avatar" 
+                    />
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)' }} />
+                    <div style={{ position: 'absolute', bottom: '15px', left: '15px', color: 'white', textAlign: 'left' }}>
+                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{profileName || 'Your Portrait'}</h4>
                     </div>
                   </div>
+                  <div style={{ padding: '1rem', display: 'flex', justifyContent: 'center', background: 'white' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => fileInputRef.current.click()} 
+                      className="btn-purple" 
+                      style={{ width: '100%', padding: '0.6rem', fontSize: '0.85rem', borderRadius: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', border: 'none', cursor: 'pointer' }}
+                    >
+                      <User size={16} /> Change Profile Photo
+                    </button>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleProfilePicChange} 
+                    accept="image/*" 
+                    style={{ display: 'none' }} 
+                  />
+                </div>
 
-                  <button className="btn-danger" onClick={onLogout} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px' }}>
-                    <LogOut size={18} /> Log Out from Account
-                  </button>
+                {/* Right Column: Profile Form Details */}
+                <div className="profile-right-col" style={{ textAlign: 'left', position: 'relative', overflow: 'hidden' }}>
+                  {/* Decorative corner rotated square background */}
+                  <div style={{
+                    position: 'absolute',
+                    width: '360px',
+                    height: '360px',
+                    background: 'rgba(138, 92, 246, 0.35)',
+                    transform: 'rotate(45deg)',
+                    top: '-160px',
+                    right: '-160px',
+                    borderRadius: '48px',
+                    pointerEvents: 'none',
+                    zIndex: 0
+                  }} />
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', position: 'relative', zIndex: 1 }}>
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--black)', margin: 0 }}>My profile</h3>
+                    </div>
+                  </div>
+
+                  {/* Success / Error Messages */}
+                  {profileSuccess && <div className="success-message" style={{ marginBottom: '1.2rem', padding: '0.6rem 0.8rem', fontSize: '0.85rem' }}>{profileSuccess}</div>}
+                  {profileError && <div className="error-message" style={{ marginBottom: '1.2rem', padding: '0.6rem 0.8rem', fontSize: '0.85rem' }}>{profileError}</div>}
+
+                  {/* Name and Phone Row */}
+                  <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Full Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="Sami Rahman" 
+                        value={profileName} 
+                        onChange={(e) => setProfileName(e.target.value)}
+                        style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', background: 'transparent' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Phone Number</label>
+                      <input 
+                        type="text" 
+                        placeholder="+91 98123-xxxxx" 
+                        value={profilePhone} 
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Input */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Email Address</label>
+                    <input 
+                      type="email" 
+                      value={profileEmail} 
+                      disabled
+                      style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', color: 'var(--gray)', background: 'transparent', cursor: 'not-allowed' }}
+                    />
+                  </div>
+
+                  {/* SMS alerts activation */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#8b5cf6' }}>Send report to mail</span>
+                    <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={smsAlerts} 
+                        onChange={(e) => setSmsAlerts(e.target.checked)} 
+                        style={{ opacity: 0, width: 0, height: 0 }} 
+                      />
+                      <span 
+                        style={{
+                          position: 'absolute',
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          backgroundColor: smsAlerts ? '#8b5cf6' : '#cbd5e1',
+                          transition: '0.3s',
+                          borderRadius: '24px'
+                        }}
+                      >
+                        <span 
+                          style={{
+                            position: 'absolute',
+                            height: '18px', width: '18px',
+                            left: '3px', bottom: '3px',
+                            backgroundColor: 'white',
+                            transition: '0.3s',
+                            borderRadius: '50%',
+                            transform: smsAlerts ? 'translateX(20px)' : 'none'
+                          }}
+                        />
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Save button and Logout side-by-side */}
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '1rem' }}>
+                    <button 
+                      type="button" 
+                      onClick={handleSaveProfile} 
+                      disabled={isSavingProfile}
+                      style={{ 
+                        flex: 2,
+                        padding: '0.8rem', 
+                        borderRadius: '100px', 
+                        border: '1px solid #8b5cf6', 
+                        background: 'transparent',
+                        color: '#8b5cf6',
+                        fontWeight: '700', 
+                        fontSize: '1rem', 
+                        cursor: 'pointer', 
+                        // boxShadow: '0 4px 15px rgba(244, 63, 94, 0.3)',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        height: '45px'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                        e.target.style.color = '#8b5cf6';
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#8b5cf6';
+                        e.target.style.color = '#fff';
+                      }}
+                    >
+                      {isSavingProfile ? 'Saving...' : 'Save'}
+                    </button>
+
+                    <button 
+                      type="button"
+                      className="btn-back" 
+                      onClick={onLogout} 
+                      style={{ flex: 1.2, justifyContent: 'center', margin: 0, padding: '0.75rem', borderRadius: '100px', border: '1.5px solid var(--border-color)', background: 'transparent', color: 'var(--gray)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', height: '45px', fontSize: '0.9rem' }}
+                    onMouseEnter={(e) => {
+                        e.target.style.color = '#8b5cf6';
+                        e.target.style.border = '1px solid #8b5cf6';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.color = 'var(--gray)';
+                        e.target.style.border = '1.5px solid var(--border-color)';
+                    }}
+                    >
+                      <LogOut size={16} /> Log Out
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
