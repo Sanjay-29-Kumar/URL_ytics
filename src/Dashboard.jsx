@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Plus, LogOut, Link2, Copy, Trash2, QrCode, BarChart3, ChevronLeft,
   Globe, Smartphone, Laptop, Tablet, AlertCircle, Calendar, ArrowRight,
-  TrendingUp, Check, Download, LayoutDashboard, User, Clock, Pencil, X
+  TrendingUp, Check, Download, LayoutDashboard, User, Clock, Pencil, X,
+  Shield, Power, MapPin, Eye, EyeOff, FileDown
 } from 'lucide-react';
 import defaultProfilePng from './assets/profile.png';
 
@@ -94,6 +95,8 @@ export default function Dashboard({ user, token, onLogout }) {
   const [customCode, setCustomCode] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Interactive UI states
   const [activeQrId, setActiveQrId] = useState(null);
@@ -108,7 +111,10 @@ export default function Dashboard({ user, token, onLogout }) {
   const [editTitle, setEditTitle] = useState('');
   const [editLongUrl, setEditLongUrl] = useState('');
   const [editExpiresAt, setEditExpiresAt] = useState('');
-  const [isSavingEdit, setIsSavingEdit] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // 1. Fetch URLs on load
   useEffect(() => {
@@ -121,6 +127,18 @@ export default function Dashboard({ user, token, onLogout }) {
       fetchAnalytics(selectedUrlId);
     }
   }, [selectedUrlId]);
+
+  // 3. Real-time click counter — poll every 10s when on dashboard/analytics
+  useEffect(() => {
+    if (activeTab !== 'dashboard' && activeTab !== 'analytics') return;
+    const interval = setInterval(() => {
+      fetch('/api/urls', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setUrls(data); })
+        .catch(() => {});
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [activeTab, token]);
 
   // API Call: Fetch URLs for the user
   const fetchUrls = async () => {
@@ -162,7 +180,8 @@ export default function Dashboard({ user, token, onLogout }) {
           longUrl: newLongUrl,
           shortCode: customCode || undefined,
           title: newTitle || undefined,
-          expiresAt: expiresAt || undefined
+          expiresAt: expiresAt || undefined,
+          password: newPassword || undefined
         })
       });
       const data = await res.json();
@@ -172,6 +191,7 @@ export default function Dashboard({ user, token, onLogout }) {
         setCustomCode('');
         setNewTitle('');
         setExpiresAt('');
+        setNewPassword('');
         setSuccess('Short URL created successfully!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -188,7 +208,24 @@ export default function Dashboard({ user, token, onLogout }) {
     setEditTitle(url.title || '');
     setEditLongUrl(url.longUrl || '');
     setEditExpiresAt(url.expiresAt ? new Date(url.expiresAt).toISOString().slice(0, 16) : '');
+    setEditPassword('');
+    setEditIsActive(url.isActive !== false);
   };
+
+  // Quick toggle isActive without opening modal
+  const handleToggleActive = async (url) => {
+    try {
+      const res = await fetch(`/api/urls/${url.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ isActive: !url.isActive })
+      });
+      const data = await res.json();
+      if (res.ok) setUrls(urls.map(u => u.id === url.id ? data : u));
+    } catch { /* ignore */ }
+  };
+
+
 
   // API Call: Update URL
   const handleUpdateUrl = async () => {
@@ -196,17 +233,18 @@ export default function Dashboard({ user, token, onLogout }) {
     setIsSavingEdit(true);
     setError('');
     try {
+      const body = {
+        title: editTitle,
+        longUrl: editLongUrl,
+        expiresAt: editExpiresAt || null,
+        isActive: editIsActive
+      };
+      // Only send password field if user typed something (empty string = remove password)
+      if (editPassword !== '') body.password = editPassword;
       const res = await fetch(`/api/urls/${editingUrl.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title: editTitle,
-          longUrl: editLongUrl,
-          expiresAt: editExpiresAt || null
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (res.ok) {
@@ -268,6 +306,35 @@ export default function Dashboard({ user, token, onLogout }) {
     navigator.clipboard.writeText(shortUrl);
     setCopiedUrlId(urlId);
     setTimeout(() => setCopiedUrlId(null), 2000);
+  };
+
+  // Helper: Export analytics as CSV
+  const handleExportCsv = async (urlId) => {
+    try {
+      const res = await fetch(`/api/urls/${urlId}/analytics/export`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to export CSV. Please try again.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Try to get filename from Content-Disposition header
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      a.download = match ? match[1] : `urlytics-analytics-${urlId}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV export error:', err);
+      alert('Network error while exporting CSV.');
+    }
   };
 
   // Helper: Get Icon for Device
@@ -485,54 +552,146 @@ export default function Dashboard({ user, token, onLogout }) {
 
             {/* TAB 1: Dashboard Panel */}
             {activeTab === 'dashboard' && (
-              <div>
-                <div className="analytics-stats-summary" style={{ marginTop: '0' }}>
-                  <div className="stat-block">
-                    <div className="stat-block-label">Total Short Links</div>
-                    <div className="stat-block-value">{urls.length}</div>
-                  </div>
-                  <div className="stat-block">
-                    <div className="stat-block-label">Total Redirect Clicks</div>
-                    <div className="stat-block-value">{urls.reduce((acc, u) => acc + (u.clicksCount || 0), 0)}</div>
-                  </div>
-                  <div className="stat-block">
-                    <div className="stat-block-label">Average Clicks / Link</div>
-                    <div className="stat-block-value">
-                      {urls.length > 0 ? (urls.reduce((acc, u) => acc + (u.clicksCount || 0), 0) / urls.length).toFixed(1) : '0.0'}
-                    </div>
+              <div className="dashboard-split-layout">
+
+                {/* LEFT COLUMN — Create Short Link form */}
+                <div className="dashboard-split-left">
+                  <div className="link-builder-card" style={{ boxShadow: 'none', border: '1.5px solid var(--border-color)', marginBottom: 0 }}>
+                    <h3 className="link-builder-title">Create a Short Link</h3>
+                    <form onSubmit={handleCreateUrl} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label htmlFor="db-longUrl">Destination URL*</label>
+                        <input
+                          type="url"
+                          id="db-longUrl"
+                          className="form-input"
+                          placeholder="https://example.com/very-long-url-path"
+                          value={newLongUrl}
+                          onChange={(e) => setNewLongUrl(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="db-title">Title</label>
+                        <input
+                          type="text"
+                          id="db-title"
+                          className="form-input"
+                          placeholder="Summer Promo"
+                          value={newTitle}
+                          onChange={(e) => setNewTitle(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="db-customCode">Custom Alias</label>
+                        <input
+                          type="text"
+                          id="db-customCode"
+                          className="form-input"
+                          placeholder="promo2026"
+                          value={customCode}
+                          onChange={(e) => setCustomCode(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="db-expiresAt">Expiration</label>
+                        <input
+                          type="datetime-local"
+                          id="db-expiresAt"
+                          className="form-input"
+                          value={expiresAt}
+                          onChange={(e) => setExpiresAt(e.target.value)}
+                          min={new Date().toISOString().slice(0, 16)}
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ position: 'relative' }}>
+                        <label htmlFor="db-newPassword">Password (Optional)</label>
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            id="db-newPassword"
+                            className="form-input"
+                            placeholder="Protect this link"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            style={{ paddingRight: '2.5rem' }}
+                          />
+                          <button type="button" onClick={() => setShowNewPassword(p => !p)}
+                            style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', padding: 0 }}>
+                            {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button type="submit" className="link-builder-submit" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+                        <Plus size={18} /> Shorten Link
+                      </button>
+                    </form>
                   </div>
                 </div>
 
-                <div className="analytics-grid-top" style={{ gridTemplateColumns: '1fr', marginTop: '2rem' }}>
-                  <div className="analytics-card">
-                    <h3 className="analytics-card-title">
-                      <Link2 size={18} style={{ color: 'var(--purple)' }} /> Recent Links
+                {/* RIGHT COLUMN — My Links list */}
+                <div className="dashboard-split-right">
+                  {/* Sticky header inside the right panel */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexShrink: 0 }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--black)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Link2 size={17} style={{ color: 'var(--purple)' }} /> My Links
                     </h3>
-                    {urls.length === 0 ? (
-                      <div className="no-data" style={{ padding: '2rem' }}>No links shortened yet. Go to "My Links" to get started!</div>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--gray)', fontWeight: 600, background: 'var(--light-gray)', padding: '2px 10px', borderRadius: '100px' }}>
+                      {urls.length} link{urls.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="dashboard-split-right-inner">
+                    {loadingUrls ? (
+                      <div className="spinner"></div>
+                    ) : urls.length === 0 ? (
+                      <div className="no-data" style={{ padding: '3rem', textAlign: 'center' }}>
+                        <Link2 size={40} style={{ color: '#cbd5e1', marginBottom: '1rem' }} />
+                        <p style={{ color: 'var(--gray)' }}>Create your first short link using the form on the left.</p>
+                      </div>
                     ) : (
-                      <div className="recent-links-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                        {urls.slice(0, 5).map(url => {
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {urls.map(url => {
                           const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
+                          const isCopied = copiedUrlId === url.id;
                           return (
-                            <div key={url.id} className="link-card" style={{ padding: '1rem 1.5rem', marginBottom: '0' }}>
+                            <div key={url.id} className={`link-card ${url.isActive === false ? 'link-card--disabled' : ''}`} style={{ padding: '0.85rem 1.1rem', marginBottom: 0 }}>
                               <div className="link-info">
                                 <div className="link-header-row">
-                                  <span className="link-title" style={{ fontSize: '1rem' }}>{url.title}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <span className="link-title" style={{ fontSize: '0.92rem' }} title={url.title}>{url.title}</span>
+                                    {url.password && <span className="link-badge link-badge--lock"><Shield size={10} /> Protected</span>}
+                                    {url.isActive === false && <span className="link-badge link-badge--off">Disabled</span>}
+                                  </div>
                                   <span className="link-date">{new Date(url.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                <a href={url.longUrl} target="_blank" rel="noopener noreferrer" className="link-short" style={{ fontSize: '0.9rem' }}>
-                                  {shortUrl}
-                                </a>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginTop: '0.25rem' }}>
+                                  <a href={shortUrl} target="_blank" rel="noopener noreferrer" className="link-short" style={{ fontSize: '0.82rem' }}>
+                                    {shortUrl} <ArrowRight size={11} />
+                                  </a>
+                                  <span className="link-long" style={{ fontSize: '0.76rem' }} title={url.longUrl}>{url.longUrl}</span>
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                <span className="link-stats-badge">{url.clicksCount} clicks</span>
-                                <button
-                                  className="btn-purple"
-                                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
-                                  onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }}
-                                >
-                                  View Stats
+                              <div className="link-actions-group" style={{ gap: '0.25rem' }}>
+                                <button className="btn-icon-only" onClick={() => handleCopyLink(url.id, shortUrl)} title="Copy">
+                                  {isCopied ? <Check size={15} style={{ color: 'var(--purple)' }} /> : <Copy size={15} />}
+                                </button>
+                                <button className="btn-icon-only" onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }} title="Analytics">
+                                  <BarChart3 size={15} />
+                                </button>
+                                <button className="btn-icon-only" onClick={() => handleToggleActive(url)} title={url.isActive === false ? 'Enable' : 'Disable'}>
+                                  <Power size={15} style={{ color: url.isActive === false ? '#94a3b8' : '#8b5cf6' }} />
+                                </button>
+                                <button className="btn-icon-only" onClick={() => openEditModal(url)} title="Edit">
+                                  <Pencil size={15} />
+                                </button>
+                                <button className="btn-icon-only" onClick={() => handleDeleteUrl(url.id)} title="Delete">
+                                  <Trash2 size={15} style={{ color: '#ef4444' }} />
                                 </button>
                               </div>
                             </div>
@@ -542,73 +701,14 @@ export default function Dashboard({ user, token, onLogout }) {
                     )}
                   </div>
                 </div>
+
               </div>
             )}
+
 
             {/* TAB 2: My Links Panel */}
             {activeTab === 'links' && (
               <div>
-                {/* Link builder card */}
-                <div className="link-builder-card">
-                  <h3 className="link-builder-title">Create a new Short Link</h3>
-                  <form onSubmit={handleCreateUrl} className="link-builder-form">
-                    <div className="form-group">
-                      <label htmlFor="longUrl">Destination URL</label>
-                      <input
-                        type="url"
-                        id="longUrl"
-                        className="form-input"
-                        placeholder="https://example.com/very-long-url-path"
-                        value={newLongUrl}
-                        onChange={(e) => setNewLongUrl(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="title">Custom Title (Optional)</label>
-                      <input
-                        type="text"
-                        id="title"
-                        className="form-input"
-                        placeholder="Summer Promo Campaign"
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="customCode">Custom Alias (Optional)</label>
-                      <input
-                        type="text"
-                        id="customCode"
-                        className="form-input"
-                        placeholder="promo2026"
-                        value={customCode}
-                        onChange={(e) => setCustomCode(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="expiresAt">
-                        <Clock size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
-                        Expiration (Optional)
-                      </label>
-                      <input
-                        type="datetime-local"
-                        id="expiresAt"
-                        className="form-input"
-                        value={expiresAt}
-                        onChange={(e) => setExpiresAt(e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
-                      />
-                    </div>
-
-                    <button type="submit" className="link-builder-submit">
-                      <Plus size={18} /> Shorten Link
-                    </button>
-                  </form>
-                </div>
 
                 {/* Urls list */}
                 {loadingUrls ? (
@@ -618,7 +718,7 @@ export default function Dashboard({ user, token, onLogout }) {
                     <div className="empty-icon-wrap">
                       <Link2 size={48} />
                     </div>
-                    <h3>No links shortened yet.</h3>
+                    <h3>No links shortened yet</h3>
                     <p style={{ color: 'var(--gray)', fontSize: '0.9rem', marginTop: '0.5rem' }}>Paste a link above to get started.</p>
                   </div>
                 ) : (
@@ -631,10 +731,15 @@ export default function Dashboard({ user, token, onLogout }) {
                       const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shortUrl)}`;
 
                       return (
-                        <div key={url.id} className="link-card">
+                        <div key={url.id} className={`link-card ${url.isActive === false ? 'link-card--disabled' : ''}`}>
                           <div className="link-info">
                             <div className="link-header-row">
-                              <span className="link-title" title={url.title}>{url.title}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span className="link-title" title={url.title}>{url.title}</span>
+                                {url.password && <span className="link-badge link-badge--lock" title="Password protected"><Shield size={11} /> Protected</span>}
+                                {url.isActive === false && <span className="link-badge link-badge--off">Disabled</span>}
+                                {/* <Power size={11} /> */}
+                              </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {url.expiresAt && (() => {
                                   const isExpired = new Date(url.expiresAt) < new Date();
@@ -643,13 +748,13 @@ export default function Dashboard({ user, token, onLogout }) {
                                   const daysLeft = Math.floor(hoursLeft / 24);
                                   return (
                                     <span className={`expiry-badge ${isExpired ? 'expiry-badge--expired' : hoursLeft < 24 ? 'expiry-badge--soon' : 'expiry-badge--active'}`}>
-                                      <Clock size={11} />
+                                      {/* <Clock size={11} /> */}
                                       {isExpired ? 'Expired' : daysLeft > 0 ? `${daysLeft}d left` : `${hoursLeft}h left`}
                                     </span>
                                   );
                                 })()}
                                 <span className="link-date">
-                                  <Calendar size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                                  {/* <Calendar size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> */}
                                   {new Date(url.createdAt).toLocaleDateString()}
                                 </span>
                               </div>
@@ -657,7 +762,7 @@ export default function Dashboard({ user, token, onLogout }) {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                               <a
-                                href={url.longUrl}
+                                href={shortUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="link-short"
@@ -669,10 +774,6 @@ export default function Dashboard({ user, token, onLogout }) {
                           </div>
 
                           <div className="link-actions-group">
-                            <span className="link-stats-badge">
-                              <TrendingUp size={14} style={{ color: 'var(--purple)' }} />
-                              {url.clicksCount} clicks
-                            </span>
 
                             <button
                               className="btn-icon-only"
@@ -711,7 +812,7 @@ export default function Dashboard({ user, token, onLogout }) {
                               onClick={() => handleCopyLink(url.id, shortUrl)}
                               title="Copy link"
                             >
-                              {isCopied ? <Check size={18} style={{ color: '#10b981' }} /> : <Copy size={18} />}
+                              {isCopied ? <Check size={18} style={{ color: '#8b5cf6' }} /> : <Copy size={18} />}
                             </button>
 
                             <button
@@ -720,6 +821,14 @@ export default function Dashboard({ user, token, onLogout }) {
                               title="View Analytics"
                             >
                               <BarChart3 size={18} />
+                            </button>
+
+                            <button
+                              className="btn-icon-only"
+                              onClick={() => handleToggleActive(url)}
+                              title={url.isActive === false ? 'Enable link' : 'Disable link'}
+                            >
+                              <Power size={18} style={{ color: url.isActive === false ? '#94a3b8' : '#8b5cf6' }} />
                             </button>
 
                             <button
@@ -849,6 +958,14 @@ export default function Dashboard({ user, token, onLogout }) {
                             <div className="link-actions-group">
                               <button
                                 className="btn-purple"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', padding: '0.55rem 1.1rem' }}
+                                onClick={() => handleExportCsv(analyticsData.url.id)}
+                              >
+                                <FileDown size={16} /> Export CSV
+                              </button>
+                              <button
+                                className="btn-purple"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', padding: '0.55rem 1.1rem' }}
                                 onClick={() => handleCopyLink(analyticsData.url.id, `${window.location.origin}/r/${analyticsData.url.shortCode}`)}
                               >
                                 {copiedUrlId === analyticsData.url.id ? 'Copied!' : 'Copy Short URL'}
@@ -986,6 +1103,7 @@ export default function Dashboard({ user, token, onLogout }) {
                                       <th>Referrer</th>
                                       <th>Device</th>
                                       <th>Browser</th>
+                                      <th>Location</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1001,6 +1119,7 @@ export default function Dashboard({ user, token, onLogout }) {
                                           </td>
                                           <td style={{ textTransform: 'capitalize' }}>{visit.device}</td>
                                           <td>{visit.browser}</td>
+                                          <td>{visit.country ? `${visit.country}${visit.city ? `, ${visit.city}` : ''}` : '—'}</td>
                                         </tr>
                                       );
                                     })}
@@ -1321,6 +1440,50 @@ export default function Dashboard({ user, token, onLogout }) {
                         ✕ Remove expiration (make permanent)
                       </button>
                     )}
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Shield size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                      Password
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showEditPassword ? 'text' : 'password'}
+                        className="form-input"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder={editingUrl?.password ? 'Enter new password to change, or leave blank to keep' : 'Set a password to protect this link'}
+                        style={{ paddingRight: '2.5rem' }}
+                      />
+                      <button type="button" onClick={() => setShowEditPassword(p => !p)}
+                        style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', padding: 0 }}>
+                        {showEditPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {editingUrl?.password && (
+                      <button type="button" onClick={() => setEditPassword('')}
+                        style={{ fontSize: '0.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.3rem', padding: 0, fontWeight: 600 }}>
+                        Remove password protection (type nothing and save)
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label><Power size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> Link Status</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.3rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setEditIsActive(a => !a)}
+                        className={`toggle-switch ${editIsActive ? 'toggle-switch--on' : ''}`}
+                        aria-label="Toggle link active state"
+                      >
+                        <span className="toggle-thumb" />
+                      </button>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: editIsActive ? '#10b981' : '#94a3b8' }}>
+                        {editIsActive ? 'Enabled — link is active' : 'Disabled — link is paused'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

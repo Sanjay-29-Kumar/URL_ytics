@@ -1,5 +1,6 @@
 import Url from '../models/Url.js';
 import Click from '../models/Click.js';
+import bcrypt from 'bcryptjs';
 
 export const listUrls = async (req, res) => {
   try {
@@ -12,7 +13,7 @@ export const listUrls = async (req, res) => {
 };
 
 export const createUrl = async (req, res) => {
-  const { longUrl, shortCode, title, expiresAt } = req.body;
+  const { longUrl, shortCode, title, expiresAt, password } = req.body;
   if (!longUrl) {
     return res.status(400).json({ error: 'longUrl is required' });
   }
@@ -60,13 +61,21 @@ export const createUrl = async (req, res) => {
       }
     }
 
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password && password.trim()) {
+      hashedPassword = await bcrypt.hash(password.trim(), 10);
+    }
+
     const newUrl = new Url({
       userId: req.user.id,
       longUrl,
       shortCode: code,
       title: title || longUrl,
       clicksCount: 0,
-      expiresAt: expiry
+      expiresAt: expiry,
+      isActive: true,
+      password: hashedPassword
     });
     
     await newUrl.save();
@@ -95,7 +104,7 @@ export const deleteUrl = async (req, res) => {
 };
 
 export const updateUrl = async (req, res) => {
-  const { title, longUrl, expiresAt } = req.body;
+  const { title, longUrl, expiresAt, password, isActive } = req.body;
 
   try {
     const url = await Url.findOne({ _id: req.params.id, userId: req.user.id });
@@ -106,6 +115,7 @@ export const updateUrl = async (req, res) => {
     // Update fields if provided
     if (title !== undefined) url.title = title;
     if (longUrl !== undefined) url.longUrl = longUrl;
+    if (isActive !== undefined) url.isActive = Boolean(isActive);
 
     // Handle expiresAt: allow null to clear expiration
     if (expiresAt !== undefined) {
@@ -117,6 +127,15 @@ export const updateUrl = async (req, res) => {
           return res.status(400).json({ error: 'Invalid expiration date format' });
         }
         url.expiresAt = expiry;
+      }
+    }
+
+    // Handle password: '' or null = remove, otherwise hash new password
+    if (password !== undefined) {
+      if (password === null || password === '') {
+        url.password = null;
+      } else {
+        url.password = await bcrypt.hash(password.trim(), 10);
       }
     }
 

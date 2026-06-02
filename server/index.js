@@ -11,7 +11,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import connectDB from './config/db.js';
 import apiRouter from './routes/index.js';
-import { handleRedirect } from './controllers/redirectController.js';
+import { handleRedirect, handlePasswordUnlock } from './controllers/redirectController.js';
+import { redirectRateLimiter, apiRateLimiter } from './middleware/rateLimiter.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,12 +30,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Public short URL redirection route
-app.get('/r/:shortCode', handleRedirect);
+// Rate-limited public short URL redirection
+app.get('/r/:shortCode', redirectRateLimiter, handleRedirect);
 
-// API Routes
-app.use('/api', apiRouter);
+// Password unlock endpoint for protected links
+app.post('/r/:shortCode/unlock', redirectRateLimiter, handlePasswordUnlock);
 
+// Rate-limited API Routes
+app.use('/api', apiRateLimiter, apiRouter);
 
 // Serve static assets in production
 const distPath = path.join(__dirname, '../dist');
@@ -42,7 +45,6 @@ app.use(express.static(distPath));
 
 // Fallback middleware to serve React SPA for other routes
 app.use((req, res, next) => {
-  // If it's API or redirection, skip and let Express handle 404
   if (req.path.startsWith('/api') || req.path.startsWith('/r/')) {
     return next();
   }

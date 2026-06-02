@@ -31,6 +31,14 @@ const urlSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  password: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

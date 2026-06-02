@@ -1457,7 +1457,7 @@ body {
 
 .link-builder-form {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
   gap: 1rem;
   align-items: flex-end;
 }
@@ -1985,8 +1985,7 @@ body {
   border-radius: 16px;
   border: 1px solid var(--border-color);
   position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
+  right: calc(100% + 8px);
   z-index: 100;
   box-shadow: var(--shadow-lg);
   animation: fadeIn 0.2s ease-out;
@@ -2319,5 +2318,288 @@ input[type="datetime-local"].form-input::-webkit-calendar-picker-indicator {
   .profile-right-col {
     width: 100%;
     padding: 2rem 1.5rem;
+  }
+}
+
+/* ===== Link Card Disabled State ===== */
+.link-card--disabled {
+  opacity: 0.55;
+  filter: grayscale(30%);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 10px,
+    rgba(0,0,0,0.015) 10px,
+    rgba(0,0,0,0.015) 11px
+  );
+}
+
+/* ===== Link Status Badges ===== */
+.link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.link-badge--lock {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--purple);
+}
+
+.link-badge--off {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+}
+
+/* ===== Toggle Switch ===== */
+.toggle-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 100px;
+  border: none;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.25s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.toggle-switch--on {
+  background: #10b981;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: transform 0.25s ease;
+  display: block;
+}
+
+.toggle-switch--on .toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* ===== Error Page ===== */
+.error-page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f3ff 0%, #faf9ff 50%, #ede9fe 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.error-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.error-blob--1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #8b5cf6, #a78bfa);
+  top: -150px;
+  right: -100px;
+}
+
+.error-blob--2 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, #c4b5fd, #ddd6fe);
+  bottom: -100px;
+  left: -80px;
+}
+
+.error-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 28px;
+  padding: 3rem 3.5rem;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(139, 92, 246, 0.12), 0 0 0 1px rgba(255,255,255,0.6) inset;
+  animation: errorCardIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes errorCardIn {
+  from { opacity: 0; transform: scale(0.88) translateY(30px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.error-image-wrap {
+  margin-bottom: 1.5rem;
+}
+
+.error-image {
+  width: 200px;
+  height: auto;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.error-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 100px;
+  margin-bottom: 1rem;
+}
+
+.error-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  margin: 0.25rem 0 0.6rem;
+  line-height: 1.15;
+}
+
+.error-subtitle {
+  font-size: 1.05rem;
+  color: #475569;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.error-detail {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.error-actions {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 540px) {
+  .error-card {
+    padding: 2rem 1.5rem;
+    border-radius: 20px;
+  }
+  .error-title {
+    font-size: 1.5rem;
+  }
+  .error-image {
+    width: 150px;
+  }
+}
+
+/* ===== Dashboard Split Layout (Left = Form, Right = Links) ===== */
+.dashboard-split-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  /* Fill the main panel height */
+  height: calc(100vh - 100px);
+}
+
+.dashboard-split-left {
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 100px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-right: 2px;
+}
+
+/* Compact form inside dashboard left column */
+.dashboard-split-left .link-builder-card {
+  padding: 1.25rem 1.25rem 1rem;
+  margin-bottom: 0;
+  box-shadow: none;
+  border: 1.5px solid var(--border-color);
+}
+
+.dashboard-split-left .link-builder-title {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-split-left .form-group {
+  margin-bottom: 0;
+}
+
+.dashboard-split-left .form-group label {
+  font-size: 0.78rem;
+  margin-bottom: 0.3rem;
+}
+
+.dashboard-split-left .form-input {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.88rem;
+  border-radius: 9px;
+}
+
+.dashboard-split-left .link-builder-submit {
+  height: 38px;
+  padding: 0;
+  font-size: 0.9rem;
+  border-radius: 9px;
+}
+
+.dashboard-split-right {
+  background: var(--white);
+  border-radius: 18px;
+  border: 1.5px solid var(--border-color);
+  padding: 1.25rem 1.25rem 1rem;
+  height: calc(100vh - 100px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-split-right-inner {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-split-layout {
+    grid-template-columns: 320px 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .dashboard-split-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .dashboard-split-left {
+    position: static;
+    height: auto;
+  }
+  .dashboard-split-right {
+    height: auto;
+    max-height: 60vh;
   }
 }

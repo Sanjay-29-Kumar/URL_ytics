@@ -27,6 +27,14 @@ const clickSchema = new mongoose.Schema({
     type: String,
     default: 'unknown'
   },
+  country: {
+    type: String,
+    default: 'Unknown'
+  },
+  city: {
+    type: String,
+    default: 'Unknown'
+  },
   timestamp: {
     type: Date,
     default: Date.now
