@@ -153,16 +153,21 @@ export default function Dashboard({ user, token, onLogout }) {
   const renderSvgLineChart = (clickHistory) => {
     if (!clickHistory || clickHistory.length === 0) return null;
 
-    const width = 500;
+    const width = 600;
     const height = 180;
-    const padding = 35;
+    
+    // Custom paddings to maximize graph size
+    const paddingLeft = 30;
+    const paddingRight = 10;
+    const paddingTop = 15;
+    const paddingBottom = 25;
     
     const maxVal = Math.max(...clickHistory.map(h => h.count), 4); // ensure min scale height
     
     // Calculate points
     const points = clickHistory.map((h, i) => {
-      const x = padding + (i * (width - 2 * padding) / (clickHistory.length - 1));
-      const y = height - padding - (h.count * (height - 2 * padding) / maxVal);
+      const x = paddingLeft + (i * (width - paddingLeft - paddingRight) / (clickHistory.length - 1));
+      const y = height - paddingBottom - (h.count * (height - paddingTop - paddingBottom) / maxVal);
       return { x, y, ...h };
     });
 
@@ -172,7 +177,7 @@ export default function Dashboard({ user, token, onLogout }) {
 
     // Area data (close the path to fill background gradient)
     const areaData = points.length > 0 
-      ? `${pathData} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z` 
+      ? `${pathData} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z` 
       : '';
 
     return (
@@ -190,10 +195,10 @@ export default function Dashboard({ user, token, onLogout }) {
           </defs>
 
           {/* Grid lines */}
-          <line x1={padding} y1={padding} x2={width - padding} y2={padding} className="chart-grid-line" />
-          <line x1={padding} y1={padding + (height - 2 * padding) / 3} x2={width - padding} y2={padding + (height - 2 * padding) / 3} className="chart-grid-line" />
-          <line x1={padding} y1={padding + 2 * (height - 2 * padding) / 3} x2={width - padding} y2={padding + 2 * (height - 2 * padding) / 3} className="chart-grid-line" />
-          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} className="chart-grid-line" />
+          <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} className="chart-grid-line" />
+          <line x1={paddingLeft} y1={paddingTop + (height - paddingTop - paddingBottom) / 3} x2={width - paddingRight} y2={paddingTop + (height - paddingTop - paddingBottom) / 3} className="chart-grid-line" />
+          <line x1={paddingLeft} y1={paddingTop + 2 * (height - paddingTop - paddingBottom) / 3} x2={width - paddingRight} y2={paddingTop + 2 * (height - paddingTop - paddingBottom) / 3} className="chart-grid-line" />
+          <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} className="chart-grid-line" />
 
           {/* Fill Area */}
           {areaData && <path d={areaData} className="chart-area" />}
@@ -212,20 +217,21 @@ export default function Dashboard({ user, token, onLogout }) {
 
           {/* X Axis Labels (Dates) */}
           {points.map((p, i) => {
+            if (i % 5 !== 0 && i !== points.length - 1) return null;
             const dateObj = new Date(p.date);
             const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return (
-              <text key={i} x={p.x} y={height - 10} className="chart-label-x">
+              <text key={i} x={p.x} y={height - 8} className="chart-label-x">
                 {label}
               </text>
             );
           })}
 
           {/* Y Axis Labels (Clicks Count) */}
-          <text x={padding - 10} y={padding + 4} className="chart-label-y">{maxVal}</text>
-          <text x={padding - 10} y={padding + (height - 2 * padding) / 3 + 4} className="chart-label-y">{Math.round(maxVal * 2 / 3)}</text>
-          <text x={padding - 10} y={padding + 2 * (height - 2 * padding) / 3 + 4} className="chart-label-y">{Math.round(maxVal / 3)}</text>
-          <text x={padding - 10} y={height - padding + 4} className="chart-label-y">0</text>
+          <text x={paddingLeft - 8} y={paddingTop + 4} className="chart-label-y">{maxVal}</text>
+          <text x={paddingLeft - 8} y={paddingTop + (height - paddingTop - paddingBottom) / 3 + 4} className="chart-label-y">{Math.round(maxVal * 2 / 3)}</text>
+          <text x={paddingLeft - 8} y={paddingTop + 2 * (height - paddingTop - paddingBottom) / 3 + 4} className="chart-label-y">{Math.round(maxVal / 3)}</text>
+          <text x={paddingLeft - 8} y={height - paddingBottom + 4} className="chart-label-y">0</text>
         </svg>
       </div>
     );
@@ -826,9 +832,9 @@ export default function Dashboard({ user, token, onLogout }) {
                         </div>
 
                         {/* SVG Line Chart (Clicks Timeline) below in a full-width card with white background */}
-                        <div className="analytics-card" style={{ width: '100%' }}>
+                        <div className="analytics-card timeline-card" style={{ width: '100%' }}>
                           <h3 className="analytics-card-title">
-                            <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 7 Days)
+                            <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 30 Days)
                           </h3>
                           {renderSvgLineChart(analyticsData.analytics.clickHistory)}
                         </div>

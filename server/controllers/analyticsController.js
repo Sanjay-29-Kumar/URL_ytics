@@ -18,8 +18,8 @@ export const getUrlAnalytics = async (req, res) => {
     const referrers = {};
     const dailyClicks = {}; // Key: YYYY-MM-DD
 
-    // Initialize the last 7 days in dailyClicks to ensure data points
-    for (let i = 6; i >= 0; i--) {
+    // Initialize the last 30 days in dailyClicks to ensure data points
+    for (let i = 29; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
@@ -42,7 +42,7 @@ export const getUrlAnalytics = async (req, res) => {
         referrers[click.referrer] = (referrers[click.referrer] || 0) + 1;
       }
       
-      // Daily clicks (only matching last 7 days, but can count older as well)
+      // Daily clicks (only matching last 30 days, but can count older as well)
       if (click.timestamp) {
         const clickDate = new Date(click.timestamp).toISOString().split('T')[0];
         if (dailyClicks[clickDate] !== undefined) {
