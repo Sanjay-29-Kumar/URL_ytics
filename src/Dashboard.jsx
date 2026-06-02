@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Plus, LogOut, Link2, Copy, Trash2, QrCode, BarChart3, ChevronLeft,
   Globe, Smartphone, Laptop, Tablet, AlertCircle, Calendar, ArrowRight,
-  TrendingUp, Check, Download, LayoutDashboard, User
+  TrendingUp, Check, Download, LayoutDashboard, User, Clock, Pencil, X
 } from 'lucide-react';
 import defaultProfilePng from './assets/profile.png';
 
@@ -93,6 +93,7 @@ export default function Dashboard({ user, token, onLogout }) {
   const [newLongUrl, setNewLongUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
   const [newTitle, setNewTitle] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
 
   // Interactive UI states
   const [activeQrId, setActiveQrId] = useState(null);
@@ -101,6 +102,13 @@ export default function Dashboard({ user, token, onLogout }) {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Edit modal states
+  const [editingUrl, setEditingUrl] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editLongUrl, setEditLongUrl] = useState('');
+  const [editExpiresAt, setEditExpiresAt] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState('');
 
   // 1. Fetch URLs on load
   useEffect(() => {
@@ -153,7 +161,8 @@ export default function Dashboard({ user, token, onLogout }) {
         body: JSON.stringify({
           longUrl: newLongUrl,
           shortCode: customCode || undefined,
-          title: newTitle || undefined
+          title: newTitle || undefined,
+          expiresAt: expiresAt || undefined
         })
       });
       const data = await res.json();
@@ -162,6 +171,7 @@ export default function Dashboard({ user, token, onLogout }) {
         setNewLongUrl('');
         setCustomCode('');
         setNewTitle('');
+        setExpiresAt('');
         setSuccess('Short URL created successfully!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -169,6 +179,48 @@ export default function Dashboard({ user, token, onLogout }) {
       }
     } catch (err) {
       setError('Connection error. Failed to shorten URL.');
+    }
+  };
+
+  // Open edit modal for a URL
+  const openEditModal = (url) => {
+    setEditingUrl(url);
+    setEditTitle(url.title || '');
+    setEditLongUrl(url.longUrl || '');
+    setEditExpiresAt(url.expiresAt ? new Date(url.expiresAt).toISOString().slice(0, 16) : '');
+  };
+
+  // API Call: Update URL
+  const handleUpdateUrl = async () => {
+    if (!editingUrl) return;
+    setIsSavingEdit(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/urls/${editingUrl.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: editTitle,
+          longUrl: editLongUrl,
+          expiresAt: editExpiresAt || null
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUrls(urls.map(u => u.id === editingUrl.id ? data : u));
+        setEditingUrl(null);
+        setSuccess('Link updated successfully!');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(data.error || 'Failed to update link');
+      }
+    } catch (err) {
+      setError('Connection error. Failed to update link.');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -537,6 +589,21 @@ export default function Dashboard({ user, token, onLogout }) {
                       />
                     </div>
 
+                    <div className="form-group">
+                      <label htmlFor="expiresAt">
+                        <Clock size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                        Expiration (Optional)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        id="expiresAt"
+                        className="form-input"
+                        value={expiresAt}
+                        onChange={(e) => setExpiresAt(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)}
+                      />
+                    </div>
+
                     <button type="submit" className="link-builder-submit">
                       <Plus size={18} /> Shorten Link
                     </button>
@@ -568,10 +635,24 @@ export default function Dashboard({ user, token, onLogout }) {
                           <div className="link-info">
                             <div className="link-header-row">
                               <span className="link-title" title={url.title}>{url.title}</span>
-                              <span className="link-date">
-                                <Calendar size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
-                                {new Date(url.createdAt).toLocaleDateString()}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {url.expiresAt && (() => {
+                                  const isExpired = new Date(url.expiresAt) < new Date();
+                                  const timeLeft = new Date(url.expiresAt) - new Date();
+                                  const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+                                  const daysLeft = Math.floor(hoursLeft / 24);
+                                  return (
+                                    <span className={`expiry-badge ${isExpired ? 'expiry-badge--expired' : hoursLeft < 24 ? 'expiry-badge--soon' : 'expiry-badge--active'}`}>
+                                      <Clock size={11} />
+                                      {isExpired ? 'Expired' : daysLeft > 0 ? `${daysLeft}d left` : `${hoursLeft}h left`}
+                                    </span>
+                                  );
+                                })()}
+                                <span className="link-date">
+                                  <Calendar size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                                  {new Date(url.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -639,6 +720,14 @@ export default function Dashboard({ user, token, onLogout }) {
                               title="View Analytics"
                             >
                               <BarChart3 size={18} />
+                            </button>
+
+                            <button
+                              className="btn-icon-only"
+                              onClick={() => openEditModal(url)}
+                              title="Edit link"
+                            >
+                              <Pencil size={18}/>
                             </button>
 
                             <button
@@ -1177,6 +1266,84 @@ export default function Dashboard({ user, token, onLogout }) {
               </div>
             )}
           </main>
+
+          {/* Edit Link Modal */}
+          {editingUrl && (
+            <div className="edit-modal-overlay" onClick={() => setEditingUrl(null)}>
+              <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="edit-modal-header">
+                  <h3><Pencil size={18} style={{ color: 'var(--purple)' }} /> Edit Link</h3>
+                  <button className="edit-modal-close" onClick={() => setEditingUrl(null)}>
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="edit-modal-body">
+                  <div className="form-group">
+                    <label>Title</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Link title"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Destination URL</label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      value={editLongUrl}
+                      onChange={(e) => setEditLongUrl(e.target.value)}
+                      placeholder="https://example.com/..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Clock size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                      Expiration
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="form-input"
+                      value={editExpiresAt}
+                      onChange={(e) => setEditExpiresAt(e.target.value)}
+                    />
+                    {editExpiresAt && (
+                      <button
+                        type="button"
+                        onClick={() => setEditExpiresAt('')}
+                        style={{ fontSize: '0.75rem', color: 'var(--purple)', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.3rem', padding: 0, fontWeight: 600 }}
+                      >
+                        ✕ Remove expiration (make permanent)
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="edit-modal-footer">
+                  <button
+                    className="btn-purple-secondary"
+                    onClick={() => setEditingUrl(null)}
+                    style={{ padding: '0.6rem 1.5rem', borderRadius: '10px' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-purple"
+                    onClick={handleUpdateUrl}
+                    disabled={isSavingEdit}
+                    style={{ padding: '0.6rem 1.5rem', borderRadius: '10px' }}
+                  >
+                    {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -44,6 +44,11 @@ export const handleRedirect = async (req, res) => {
       return res.redirect('/?error=not_found');
     }
 
+    // Check if link has expired
+    if (urlEntry.expiresAt && new Date() > urlEntry.expiresAt) {
+      return res.redirect('/?error=link_expired');
+    }
+
     // Parse analytics details
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
     

@@ -1457,7 +1457,7 @@ body {
 
 .link-builder-form {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
   gap: 1rem;
   align-items: flex-end;
 }
@@ -2045,6 +2045,155 @@ body {
     margin-left: 0;
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+/* ===== Link Expiry Badges ===== */
+.expiry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.expiry-badge--active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.expiry-badge--soon {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+.expiry-badge--expired {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Styled datetime-local input */
+input[type="datetime-local"].form-input {
+  color-scheme: light;
+  cursor: pointer;
+}
+
+input[type="datetime-local"].form-input::-webkit-calendar-picker-indicator {
+  filter: invert(35%) sepia(75%) saturate(3000%) hue-rotate(240deg) brightness(95%);
+  cursor: pointer;
+}
+
+/* ===== Edit Link Modal ===== */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.edit-modal {
+  background: var(--white);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.25s ease;
+  overflow: hidden;
+}
+
+.edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 1.8rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.edit-modal-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--black);
+  margin: 0;
+}
+
+.edit-modal-close {
+  background: none;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-modal-close:hover {
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--purple);
+}
+
+.edit-modal-body {
+  padding: 1.5rem 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.edit-modal-body .form-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray);
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+.edit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.2rem 1.8rem;
+  border-top: 1px solid var(--border-color);
+  background: #fafafe;
+}
+
+@media (max-width: 540px) {
+  .edit-modal {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
   }
 }
 

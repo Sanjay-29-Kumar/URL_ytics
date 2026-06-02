@@ -12,9 +12,21 @@ export const listUrls = async (req, res) => {
 };
 
 export const createUrl = async (req, res) => {
-  const { longUrl, shortCode, title } = req.body;
+  const { longUrl, shortCode, title, expiresAt } = req.body;
   if (!longUrl) {
     return res.status(400).json({ error: 'longUrl is required' });
+  }
+
+  // Validate expiresAt if provided
+  let expiry = null;
+  if (expiresAt) {
+    expiry = new Date(expiresAt);
+    if (isNaN(expiry.getTime())) {
+      return res.status(400).json({ error: 'Invalid expiration date format' });
+    }
+    if (expiry <= new Date()) {
+      return res.status(400).json({ error: 'Expiration date must be in the future' });
+    }
   }
 
   try {
@@ -53,7 +65,8 @@ export const createUrl = async (req, res) => {
       longUrl,
       shortCode: code,
       title: title || longUrl,
-      clicksCount: 0
+      clicksCount: 0,
+      expiresAt: expiry
     });
     
     await newUrl.save();
@@ -78,5 +91,39 @@ export const deleteUrl = async (req, res) => {
   } catch (error) {
     console.error('Delete URL error:', error);
     res.status(500).json({ error: 'Failed to delete URL' });
+  }
+};
+
+export const updateUrl = async (req, res) => {
+  const { title, longUrl, expiresAt } = req.body;
+
+  try {
+    const url = await Url.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!url) {
+      return res.status(404).json({ error: 'URL not found or unauthorized' });
+    }
+
+    // Update fields if provided
+    if (title !== undefined) url.title = title;
+    if (longUrl !== undefined) url.longUrl = longUrl;
+
+    // Handle expiresAt: allow null to clear expiration
+    if (expiresAt !== undefined) {
+      if (expiresAt === null || expiresAt === '') {
+        url.expiresAt = null;
+      } else {
+        const expiry = new Date(expiresAt);
+        if (isNaN(expiry.getTime())) {
+          return res.status(400).json({ error: 'Invalid expiration date format' });
+        }
+        url.expiresAt = expiry;
+      }
+    }
+
+    await url.save();
+    res.json(url);
+  } catch (error) {
+    console.error('Update URL error:', error);
+    res.status(500).json({ error: 'Failed to update URL' });
   }
 };
