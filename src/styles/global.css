@@ -2003,22 +2003,68 @@ body {
 
 /* Loading Spinners */
 .spinner {
-  border: 3px solid rgba(139, 92, 246, 0.1);
-  width: 40px;
-  height: 40px;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  margin: 6rem auto;
   border-radius: 50%;
-  border-left-color: var(--purple);
-  animation: spin 0.8s linear infinite;
-  margin: 4rem auto;
+  background: var(--purple);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+  animation: pulse-core 2s ease-in-out infinite;
+}
+
+.spinner::before,
+.spinner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  margin-left: -24px;
+  border-radius: 50%;
+  background: var(--purple);
+  opacity: 0;
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  pointer-events: none;
+}
+
+.spinner::after {
+  animation-delay: -1s;
 }
 
 .spinner-small {
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  width: 18px;
-  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border-left-color: var(--white);
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.8;
+  }
+  80%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-core {
+  0%, 100% {
+    transform: scale(0.85);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.9);
+  }
 }
 
 /* QR Code Dialog / Container inside lists */
