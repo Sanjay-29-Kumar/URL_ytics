@@ -225,6 +225,25 @@ export default function Dashboard({
     reader.readAsText(csvFile);
   };
 
+  const handleDownloadQrCode = async (e, shortCode, qrUrl) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `QR-${shortCode}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Failed to download QR code:', err);
+      window.open(qrUrl, '_blank');
+    }
+  };
+
   const [analyticsData, setAnalyticsData] = useState(null);
 
   // Link Builder states
@@ -341,8 +360,27 @@ export default function Dashboard({
   };
 
   // Export analytics CSV for a URL
-  const handleExportCsv = (urlId) => {
-    window.open(getExportCsvUrl(urlId), '_blank');
+  const handleExportCsv = async (urlId) => {
+    try {
+      const res = await fetch(getExportCsvUrl(urlId), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error('Failed to export CSV report');
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `analytics-${urlId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to download CSV report');
+    }
   };
 
   // API Call: Update URL
@@ -900,23 +938,25 @@ export default function Dashboard({
                                 <div className="qr-container" onClick={(e) => e.stopPropagation()}>
                                   <button className="qr-close-btn" onClick={() => setActiveQrId(null)}>Close</button>
                                   <img src={qrImgUrl} alt="QR Code Link" width="120" height="120" />
-                                  <a
-                                    href={qrImgUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    download={`QR-${url.shortCode}.png`}
+                                  <button
+                                    onClick={(e) => handleDownloadQrCode(e, url.shortCode, qrImgUrl)}
                                     style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: 0,
                                       fontSize: '0.8rem',
                                       color: 'var(--purple)',
                                       fontWeight: 600,
                                       textDecoration: 'none',
                                       display: 'flex',
                                       alignItems: 'center',
-                                      gap: '0.2rem'
+                                      gap: '0.2rem',
+                                      fontFamily: 'var(--font-cursive)'
                                     }}
                                   >
                                     <Download size={12} /> Save QR Code
-                                  </a>
+                                  </button>
                                 </div>
                               )}
                             </button>
@@ -1294,16 +1334,13 @@ export default function Dashboard({
                             >
                               {copiedUrlId === url.id ? 'Copied!' : 'Copy Link'}
                             </button>
-                            <a
-                              href={qrImgUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              download={`QR-${url.shortCode}.png`}
+                            <button
+                              onClick={(e) => handleDownloadQrCode(e, url.shortCode, qrImgUrl)}
                               className="btn-purple"
-                              style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                              style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
                             >
                               <Download size={14} /> Download
-                            </a>
+                            </button>
                           </div>
                         </div>
                       );
@@ -1380,7 +1417,6 @@ export default function Dashboard({
                       <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Full Name</label>
                       <input
                         type="text"
-                        placeholder="Sami Rahman"
                         value={profileName}
                         onChange={(e) => setProfileName(e.target.value)}
                         style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', background: 'transparent' }}

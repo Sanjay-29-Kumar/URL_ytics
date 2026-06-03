@@ -1,22 +1,12 @@
 import { Search, Menu, X } from 'lucide-react';
 
-export default function Navbar({ activeTab, searchQuery, setSearchQuery, currentUser, isMobileOpen, setIsMobileOpen }) {
+export default function Navbar({ activeTab, handleTabChange, searchQuery, setSearchQuery, currentUser, isMobileOpen, setIsMobileOpen }) {
   return (
     <header className="dashboard-navbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <button 
           className="hamburger" 
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px',
-            color: 'var(--black)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
         >
           {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -48,7 +38,11 @@ export default function Navbar({ activeTab, searchQuery, setSearchQuery, current
 
       <div className="navbar-right">
         {/* User Email Badge */}
-        <div className="user-badge-wrap">
+        <div 
+          className="user-badge-wrap"
+          onClick={() => handleTabChange && handleTabChange('profile')}
+          style={{ cursor: 'pointer' }}
+        >
           {currentUser?.profilePicture ? (
             <img src={currentUser.profilePicture} alt="Avatar" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
           ) : (

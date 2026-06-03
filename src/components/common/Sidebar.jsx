@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import { Link2, LayoutDashboard, BarChart3, QrCode, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export default function Sidebar({ activeTab, handleTabChange, currentUser, setAnalyticsData, isLocked, setIsLocked, isMobileOpen, setIsMobileOpen }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const isOpen = isLocked || isHovered;
+  const isOpen = isLocked;
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -15,8 +13,6 @@ export default function Sidebar({ activeTab, handleTabChange, currentUser, setAn
   return (
     <aside 
       className={`dashboard-sidebar ${isOpen ? 'expanded' : ''} ${isMobileOpen ? 'open' : ''}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo row with collapse/lock functionality */}
       <div className="sidebar-logo-row" style={{ justifyContent: isOpen ? 'space-between' : 'center', padding: isOpen ? '0 0.65rem' : '0' }}>

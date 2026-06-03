@@ -2101,6 +2101,9 @@ body {
   border: none;
   cursor: pointer;
   color: var(--black);
+  padding: 4px;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {
@@ -2187,7 +2190,7 @@ body {
   }
 
   .hamburger {
-    display: block;
+    display: flex;
   }
 
   .link-card {

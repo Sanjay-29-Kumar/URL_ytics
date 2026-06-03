@@ -30,6 +30,7 @@ export default function DashboardLayout({
         <div className={`dashboard-main-wrapper ${isSidebarLocked ? 'shifted' : ''}`}>
           <Navbar
             activeTab={activeTab}
+            handleTabChange={handleTabChange}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             currentUser={currentUser}
