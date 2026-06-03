@@ -39,16 +39,22 @@ app.post('/r/:shortCode/unlock', redirectRateLimiter, handlePasswordUnlock);
 // Rate-limited API Routes
 app.use('/api', apiRateLimiter, apiRouter);
 
-// Serve static assets in production
-const distPath = path.join(__dirname, '../dist');
-app.use(express.static(distPath));
+// Health check endpoint for UptimeRobot
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
-// Fallback middleware to serve React SPA for other routes
+// Fallback for root route (helpful for general uptime checking)
+app.get('/', (req, res) => {
+  res.status(200).send('URLytics Backend API is running.');
+});
+
+// Catch-all for unknown routes
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/r/')) {
-    return next();
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API Endpoint not found' });
   }
-  res.sendFile(path.join(distPath, 'index.html'));
+  res.status(404).send('Not Found');
 });
 
 // Start Express Server
