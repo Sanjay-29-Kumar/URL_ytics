@@ -54,34 +54,35 @@ async function resolveGeo(ip) {
 
 export const handleRedirect = async (req, res) => {
   const { shortCode } = req.params;
+  const frontendUrl = process.env.FRONTEND_URL || '';
 
   try {
     const urlEntry = await Url.findOne({ shortCode });
 
     if (!urlEntry) {
-      return res.redirect('/?error=not_found');
+      return res.redirect(`${frontendUrl}/?error=not_found`);
     }
 
     // Check if link is disabled (isActive: false explicitly — undefined/null treated as active)
     if (urlEntry.isActive === false) {
-      return res.redirect('/?error=link_disabled');
+      return res.redirect(`${frontendUrl}/?error=link_disabled`);
     }
 
     // Check if link has expired
     if (urlEntry.expiresAt && new Date() > urlEntry.expiresAt) {
-      return res.redirect('/?error=link_expired');
+      return res.redirect(`${frontendUrl}/?error=link_expired`);
     }
 
     // Check if link is password-protected
     if (urlEntry.password) {
-      return res.redirect(`/?unlock=${shortCode}`);
+      return res.redirect(`${frontendUrl}/?unlock=${shortCode}`);
     }
 
     // Log click and redirect
     await logAndRedirect(req, res, urlEntry);
   } catch (error) {
     console.error('Redirect controller error:', error);
-    return res.redirect('/?error=server_error');
+    return res.redirect(`${frontendUrl}/?error=server_error`);
   }
 };
 

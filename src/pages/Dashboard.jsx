@@ -489,7 +489,7 @@ export default function Dashboard({ user, token, onLogout }) {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowY: 'auto', maxHeight: 'calc(100vh - 180px)', paddingRight: '4px' }}>
                       {urls.map(url => {
-                        const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
+                        const shortUrl = `${import.meta.env.VITE_API_URL || window.location.origin}/r/${url.shortCode}`;
                         const isCopied = copiedUrlId === url.id;
                         return (
                           <div key={url.id} className={`link-card ${url.isActive === false ? 'link-card--disabled' : ''}`} style={{ padding: '1rem 1.25rem', marginBottom: 0 }}>
@@ -554,8 +554,7 @@ export default function Dashboard({ user, token, onLogout }) {
                 ) : (
                   <div className="links-grid">
                     {urls.filter(u => u.title?.toLowerCase().includes(searchQuery.toLowerCase()) || u.longUrl?.toLowerCase().includes(searchQuery.toLowerCase()) || u.shortCode?.toLowerCase().includes(searchQuery.toLowerCase())).map(url => {
-                      const origin = window.location.origin;
-                      const shortUrl = `${origin}/r/${url.shortCode}`;
+                      const shortUrl = `${import.meta.env.VITE_API_URL || window.location.origin}/r/${url.shortCode}`;
                       const isCopied = copiedUrlId === url.id;
                       const isQrOpen = activeQrId === url.id;
                       const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shortUrl)}`;
@@ -712,7 +711,7 @@ export default function Dashboard({ user, token, onLogout }) {
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
                         {urls.map(url => {
-                          const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
+                          const shortUrl = `${import.meta.env.VITE_API_URL || window.location.origin}/r/${url.shortCode}`;
                           return (
                             <div
                               key={url.id}
@@ -803,7 +802,7 @@ export default function Dashboard({ user, token, onLogout }) {
                               </button>
                               <button
                                 className="btn-purple"
-                                onClick={() => handleCopyLink(analyticsData.url.id, `${window.location.origin}/r/${analyticsData.url.shortCode}`)}
+                                onClick={() => handleCopyLink(analyticsData.url.id, `${import.meta.env.VITE_API_URL || window.location.origin}/r/${analyticsData.url.shortCode}`)}
                               >
                                 {copiedUrlId === analyticsData.url.id ? 'Copied!' : 'Copy Short URL'}
                               </button>
@@ -993,7 +992,7 @@ export default function Dashboard({ user, token, onLogout }) {
                 ) : (
                   <div className="qrcodes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
                     {urls.map(url => {
-                      const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
+                      const shortUrl = `${import.meta.env.VITE_API_URL || window.location.origin}/r/${url.shortCode}`;
                       const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shortUrl)}`;
                       return (
                         <div key={url.id} className="analytics-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1.5rem' }}>
