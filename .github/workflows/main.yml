@@ -23,6 +23,7 @@ jobs:
       - name: Build Frontend Image
         run: |
           docker build \
+          --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
           -f Dockerfile.frontend \
           -t ${{ secrets.DOCKER_USERNAME }}/urlytics-frontend:latest .
 
