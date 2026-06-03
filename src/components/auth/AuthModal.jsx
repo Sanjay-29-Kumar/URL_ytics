@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
-import loginSvg from './assets/login.svg';
-import shortenerSvg from './assets/link_shortener.svg';
-import { useNavigate } from 'react-router-dom';
+import { X, AlertCircle } from 'lucide-react';
+import loginSvg from '../../assets/login.svg';
+import shortenerSvg from '../../assets/link_shortener.svg';
+import { login as apiLogin, register as apiRegister } from '../../services/authService';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
-
-export default function AuthPage({ mode, onSuccess }) {
-  const navigate = useNavigate();
+export default function AuthModal({ isOpen, onClose, onSuccess, activeTab: initialTab }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,17 +12,19 @@ export default function AuthPage({ mode, onSuccess }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Sync activeTab state with trigger route mode
+  // Sync activeTab state with trigger source tab from App.jsx
   useEffect(() => {
-    if (mode) {
-      setActiveTab(mode);
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
       setError('');
-      // Reset input fields
+      // Reset input fields when open
       setEmail('');
       setPassword('');
       setConfirmPassword('');
     }
-  }, [mode]);
+  }, [isOpen, initialTab]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,26 +41,18 @@ export default function AuthPage({ mode, onSuccess }) {
     }
 
     setLoading(true);
-    const endpoint = activeTab === 'login' ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
 
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Authentication failed');
-      }
+      const data = activeTab === 'login'
+        ? await apiLogin(email, password)
+        : await apiRegister(email, password);
 
       // Save token and user details to local storage
       localStorage.setItem('urlytics_token', data.token);
       localStorage.setItem('urlytics_user', JSON.stringify(data.user));
 
       onSuccess(data.token, data.user);
+      onClose();
     } catch (err) {
       setError(err.message || 'An error occurred during authentication');
     } finally {
@@ -70,28 +61,27 @@ export default function AuthPage({ mode, onSuccess }) {
   };
 
   return (
-    <div className="auth-page-container">
-      {/* Left Column: Form Section */}
-      <div className="auth-page-left">
-        {/* Back Link */}
-        <button className="auth-back-btn" onClick={() => navigate('/')}>
-          <ArrowLeft size={16} />
-          <span>Back to home</span>
-        </button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Left Column (Form Pane) */}
+        <div className="auth-modal-left">
+          {/* Close button */}
+          <button className="modal-close" onClick={onClose} style={{ top: '1.5rem', right: '1.5rem' }}>
+            <X size={20} />
+          </button>
 
-        <div className="auth-page-form-wrap">
-          {/* Logo Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '2.5rem' }}>
-            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--black)', fontFamily: 'var(--font-cursive)' }}>
+          {/* Brand Logo Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '2.2rem' }}>
+            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--black)', fontFamily: 'var(--font-cursive)' }}>
               URL<span style={{ color: 'var(--purple)' }}>ytics</span>
             </span>
           </div>
 
-          {/* Titles */}
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--black)', marginBottom: '0.3rem' }}>
+          {/* Form Header Titles */}
+          <h2 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--black)', marginBottom: '0.2rem' }}>
             {activeTab === 'login' ? 'Welcome back' : 'Create an account'}
           </h2>
-          <p style={{ fontSize: '0.95rem', color: 'var(--gray)', marginBottom: '2.2rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--gray)', marginBottom: '1.8rem' }}>
             Please enter your details
           </p>
 
@@ -103,7 +93,7 @@ export default function AuthPage({ mode, onSuccess }) {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+            <div className="form-group" style={{ marginBottom: '1.1rem' }}>
               <label htmlFor="email">Email address</label>
               <input
                 type="email"
@@ -116,7 +106,7 @@ export default function AuthPage({ mode, onSuccess }) {
               />
             </div>
 
-            <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+            <div className="form-group" style={{ marginBottom: '1.1rem' }}>
               <label htmlFor="password">Password</label>
               <input
                 type="password"
@@ -130,7 +120,7 @@ export default function AuthPage({ mode, onSuccess }) {
             </div>
 
             {activeTab === 'signup' && (
-              <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+              <div className="form-group" style={{ marginBottom: '1.1rem' }}>
                 <label htmlFor="confirmPassword">Confirm Password</label>
                 <input
                   type="password"
@@ -144,7 +134,7 @@ export default function AuthPage({ mode, onSuccess }) {
               </div>
             )}
 
-            {/* Extra Row: Remember / Forgot */}
+            {/* Controls: Remember checkbox / Forgot link */}
             <div className="form-extra-row">
               <label className="form-checkbox-label">
                 <input type="checkbox" style={{ accentColor: 'var(--purple)' }} />
@@ -155,12 +145,12 @@ export default function AuthPage({ mode, onSuccess }) {
               </span>
             </div>
 
-            {/* Submit Button */}
+            {/* Primary Sign In / Sign Up Button */}
             <button
               type="submit"
               className="auth-submit-btn"
               style={{
-                padding: '0.85rem',
+                padding: '0.8rem',
                 borderRadius: '12px',
                 marginTop: '0',
                 backgroundColor: 'var(--purple)'
@@ -182,34 +172,34 @@ export default function AuthPage({ mode, onSuccess }) {
             </button>
           </form>
 
-          {/* Toggle Tab Footer */}
-          <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.95rem', color: 'var(--gray)' }}>
+          {/* Auth Tab Switching Link */}
+          <div style={{ marginTop: '1.8rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--gray)' }}>
             {activeTab === 'login' ? (
               <span>
                 Don't have an account?{' '}
-                <span className="form-link" onClick={() => { navigate('/signup'); }}>
+                <span className="form-link" onClick={() => { setActiveTab('signup'); setError(''); }}>
                   Sign up
                 </span>
               </span>
             ) : (
               <span>
                 Already have an account?{' '}
-                <span className="form-link" onClick={() => { navigate('/login'); }}>
+                <span className="form-link" onClick={() => { setActiveTab('login'); setError(''); }}>
                   Log in
                 </span>
               </span>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Right Column: Illustration Section */}
-      <div className="auth-page-right">
-        <img
-          src={activeTab === 'login' ? loginSvg : shortenerSvg}
-          className="auth-page-illustration"
-          alt="Authentication Illustration"
-        />
+        {/* Right Column (Illustration Pane) */}
+        <div className="auth-modal-right">
+          <img
+            src={activeTab === 'login' ? loginSvg : shortenerSvg}
+            className="auth-illustration"
+            alt="Authentication Illustration"
+          />
+        </div>
       </div>
     </div>
   );

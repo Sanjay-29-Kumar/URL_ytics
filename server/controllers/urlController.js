@@ -77,7 +77,7 @@ export const createUrl = async (req, res) => {
       isActive: true,
       password: hashedPassword
     });
-    
+
     await newUrl.save();
     res.status(201).json(newUrl);
   } catch (error) {

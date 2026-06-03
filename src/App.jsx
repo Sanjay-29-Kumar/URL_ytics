@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
-import LandingPage from './LandingPage.jsx';
-import Dashboard from './Dashboard.jsx';
-import AuthPage from './AuthPage.jsx';
-import ErrorPage from './ErrorPage.jsx';
-import PasswordUnlockPage from './PasswordUnlockPage.jsx';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import ProtectedRoute from './ProtectedRoute.jsx';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { useNavigate } from 'react-router-dom';
+import ErrorPage from './pages/ErrorPage.jsx';
+import PasswordUnlockPage from './pages/PasswordUnlockPage.jsx';
+import AppRoutes from './routes/AppRoutes.jsx';
+import { getMe } from './services/authService';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -50,18 +46,14 @@ function App() {
 
   const verifySession = async (authToken) => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        // Token is invalid/expired
-        handleLogout();
-      } else {
-        setUser(data.user);
-      }
+      const data = await getMe(authToken);
+      setUser(data.user);
     } catch (e) {
       console.warn('Could not verify session with server, keeping local session cache');
+      // If we got an error that is not a connection issue, handle logout
+      if (e.message && e.message !== 'Failed to verify session') {
+        handleLogout();
+      }
     } finally {
       setCheckingAuth(false);
     }
@@ -116,32 +108,12 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={
-        user ? <Navigate to="/dashboard" replace /> : <AuthPage mode="login" onSuccess={handleAuthSuccess} />
-      } />
-      <Route path="/signup" element={
-        user ? <Navigate to="/dashboard" replace /> : <AuthPage mode="signup" onSuccess={handleAuthSuccess} />
-      } />
-      <Route path="/dashboard" element={
-        <ProtectedRoute user={user} token={token}>
-          <Dashboard user={user} token={token} onLogout={handleLogout} />
-        </ProtectedRoute>
-      } />
-      <Route path="/dashboard/:tab" element={
-        <ProtectedRoute user={user} token={token}>
-          <Dashboard user={user} token={token} onLogout={handleLogout} />
-        </ProtectedRoute>
-      } />
-      <Route path="/dashboard/:tab/:urlId" element={
-        <ProtectedRoute user={user} token={token}>
-          <Dashboard user={user} token={token} onLogout={handleLogout} />
-        </ProtectedRoute>
-      } />
-      {/* Catch-all route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <AppRoutes
+      user={user}
+      token={token}
+      handleAuthSuccess={handleAuthSuccess}
+      handleLogout={handleLogout}
+    />
   );
 }
 

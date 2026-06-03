@@ -1,14 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import DashboardLayout from '../layouts/DashboardLayout';
 import {
   Plus, LogOut, Link2, Copy, Trash2, QrCode, BarChart3, ChevronLeft,
   Globe, Smartphone, Laptop, Tablet, AlertCircle, Calendar, ArrowRight,
   TrendingUp, Check, Download, LayoutDashboard, User, Clock, Pencil, X,
-  Shield, Power, MapPin, Eye, EyeOff, FileDown
+  Shield, Power, MapPin, Eye, EyeOff, FileDown, Search
 } from 'lucide-react';
-import defaultProfilePng from './assets/profile.png';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import defaultProfilePng from '../assets/profile.png';
+import { LineChart } from '@mui/x-charts/LineChart';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import {
+  getUrls,
+  createUrl as apiCreateUrl,
+  updateUrl as apiUpdateUrl,
+  deleteUrl as apiDeleteUrl,
+  getAnalytics,
+  getExportCsvUrl
+} from '../services/urlService';
+import { updateProfile as apiUpdateProfile } from '../services/authService';
 
 export default function Dashboard({ user, token, onLogout }) {
   const { tab, urlId: routeUrlId } = useParams();
@@ -24,6 +34,7 @@ export default function Dashboard({ user, token, onLogout }) {
     }
   };
   const [urls, setUrls] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Profile states
   const [currentUser, setCurrentUser] = useState(user);
@@ -58,29 +69,17 @@ export default function Dashboard({ user, token, onLogout }) {
     setProfileSuccess('');
     setProfileError('');
     try {
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: profileName,
-          phone: profilePhone,
-          profilePicture: profilePic,
-          smsAlerts: smsAlerts
-        })
+      const data = await apiUpdateProfile(token, {
+        name: profileName,
+        phone: profilePhone,
+        profilePicture: profilePic,
+        smsAlerts: smsAlerts
       });
-      const data = await res.json();
-      if (res.ok) {
-        setProfileSuccess('Profile saved successfully!');
-        setCurrentUser(data.user);
-        localStorage.setItem('urlytics_user', JSON.stringify(data.user));
-      } else {
-        setProfileError(data.error || 'Failed to save profile');
-      }
+      setProfileSuccess('Profile saved successfully!');
+      setCurrentUser(data.user);
+      localStorage.setItem('urlytics_user', JSON.stringify(data.user));
     } catch (err) {
-      setProfileError('Failed to connect to the server');
+      setProfileError(err.message || 'Failed to save profile');
     } finally {
       setIsSavingProfile(false);
     }
@@ -101,7 +100,7 @@ export default function Dashboard({ user, token, onLogout }) {
       reader.readAsDataURL(file);
     }
   };
-  
+
   const [analyticsData, setAnalyticsData] = useState(null);
 
   // Link Builder states
@@ -146,8 +145,7 @@ export default function Dashboard({ user, token, onLogout }) {
   useEffect(() => {
     if (activeTab !== 'dashboard' && activeTab !== 'analytics') return;
     const interval = setInterval(() => {
-      fetch(`${API_BASE}/api/urls`, { headers: { 'Authorization': `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : null)
+      getUrls(token)
         .then(data => { if (data) setUrls(data); })
         .catch(() => { });
     }, 10000);
@@ -159,17 +157,10 @@ export default function Dashboard({ user, token, onLogout }) {
     setLoadingUrls(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/api/urls`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUrls(data);
-      } else {
-        setError(data.error || 'Failed to fetch URLs');
-      }
+      const data = await getUrls(token);
+      setUrls(data);
     } catch (err) {
-      setError('Connection failed. Could not fetch URLs.');
+      setError(err.message || 'Connection failed. Could not fetch URLs.');
     } finally {
       setLoadingUrls(false);
     }
@@ -184,35 +175,23 @@ export default function Dashboard({ user, token, onLogout }) {
     if (!newLongUrl) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/urls`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          longUrl: newLongUrl,
-          shortCode: customCode || undefined,
-          title: newTitle || undefined,
-          expiresAt: expiresAt || undefined,
-          password: newPassword || undefined
-        })
+      const data = await apiCreateUrl(token, {
+        longUrl: newLongUrl,
+        shortCode: customCode || undefined,
+        title: newTitle || undefined,
+        expiresAt: expiresAt || undefined,
+        password: newPassword || undefined
       });
-      const data = await res.json();
-      if (res.ok) {
-        setUrls([data, ...urls]);
-        setNewLongUrl('');
-        setCustomCode('');
-        setNewTitle('');
-        setExpiresAt('');
-        setNewPassword('');
-        setSuccess('Short URL created successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Failed to create short link');
-      }
+      setUrls([data, ...urls]);
+      setNewLongUrl('');
+      setCustomCode('');
+      setNewTitle('');
+      setExpiresAt('');
+      setNewPassword('');
+      setSuccess('Short URL created successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Connection error. Failed to shorten URL.');
+      setError(err.message || 'Connection error. Failed to shorten URL.');
     }
   };
 
@@ -229,24 +208,14 @@ export default function Dashboard({ user, token, onLogout }) {
   // Quick toggle isActive without opening modal
   const handleToggleActive = async (url) => {
     try {
-      const res = await fetch(`${API_BASE}/api/urls/${url.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ isActive: !url.isActive })
-      });
-      const data = await res.json();
-      if (res.ok) setUrls(urls.map(u => u.id === url.id ? data : u));
+      const data = await apiUpdateUrl(token, url.id, { isActive: !url.isActive });
+      setUrls(urls.map(u => u.id === url.id ? data : u));
     } catch { /* ignore */ }
   };
 
   // Export analytics CSV for a URL
   const handleExportCsv = (urlId) => {
-    const a = document.createElement('a');
-    a.href = `${API_BASE}/api/urls/${urlId}/analytics/export`;
-    a.setAttribute('download', '');
-    // Pass auth by query param since it's a direct download link
-    // Instead, open in same tab (the server sets Content-Disposition)
-    window.open(`${API_BASE}/api/urls/${urlId}/analytics/export`, '_blank');
+    window.open(getExportCsvUrl(urlId), '_blank');
   };
 
   // API Call: Update URL
@@ -263,22 +232,14 @@ export default function Dashboard({ user, token, onLogout }) {
       };
       // Only send password field if user typed something (empty string = remove password)
       if (editPassword !== '') body.password = editPassword;
-      const res = await fetch(`${API_BASE}/api/urls/${editingUrl.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUrls(urls.map(u => u.id === editingUrl.id ? data : u));
-        setEditingUrl(null);
-        setSuccess('Link updated successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Failed to update link');
-      }
+
+      const data = await apiUpdateUrl(token, editingUrl.id, body);
+      setUrls(urls.map(u => u.id === editingUrl.id ? data : u));
+      setEditingUrl(null);
+      setSuccess('Link updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Connection error. Failed to update link.');
+      setError(err.message || 'Connection error. Failed to update link.');
     } finally {
       setIsSavingEdit(false);
     }
@@ -289,16 +250,10 @@ export default function Dashboard({ user, token, onLogout }) {
     if (!confirm('Are you sure you want to delete this short link? All click analytics history will be lost.')) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/urls/${urlId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setUrls(urls.filter(u => u.id !== urlId));
-        if (selectedUrlId === urlId) {
-          
-          setAnalyticsData(null);
-        }
+      await apiDeleteUrl(token, urlId);
+      setUrls(urls.filter(u => u.id !== urlId));
+      if (selectedUrlId === urlId) {
+        setAnalyticsData(null);
       }
     } catch (err) {
       console.error('Error deleting url:', err);
@@ -309,13 +264,8 @@ export default function Dashboard({ user, token, onLogout }) {
   const fetchAnalytics = async (urlId) => {
     setLoadingAnalytics(true);
     try {
-      const res = await fetch(`${API_BASE}/api/urls/${urlId}/analytics`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAnalyticsData(data);
-      }
+      const data = await getAnalytics(token, urlId);
+      setAnalyticsData(data);
     } catch (err) {
       console.error('Error fetching analytics:', err);
     } finally {
@@ -340,195 +290,87 @@ export default function Dashboard({ user, token, onLogout }) {
   };
 
   // Helper: Calculate Custom SVG Line Chart coordinates
+  const lightTheme = createTheme({
+    palette: {
+      mode: 'light',
+    },
+  });
+
   const renderSvgLineChart = (clickHistory) => {
     if (!clickHistory || clickHistory.length === 0) return null;
 
-    const width = 1000;
-    const height = 180;
-
-    // Custom paddings to maximize graph size
-    const paddingLeft = 40;
-    const paddingRight = 15;
-    const paddingTop = 15;
-    const paddingBottom = 25;
-
-    const maxVal = Math.max(...clickHistory.map(h => h.count), 4); // ensure min scale height
-
-    // Calculate points
-    const points = clickHistory.map((h, i) => {
-      const x = paddingLeft + (i * (width - paddingLeft - paddingRight) / (clickHistory.length - 1));
-      const y = height - paddingBottom - (h.count * (height - paddingTop - paddingBottom) / maxVal);
-      return { x, y, ...h };
-    });
-
-    const pathData = points.reduce((acc, p, i) => {
-      return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
-    }, '');
-
-    // Area data (close the path to fill background gradient)
-    const areaData = points.length > 0
-      ? `${pathData} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`
-      : '';
+    const xData = clickHistory.map(h => new Date(h.date));
+    const yData = clickHistory.map(h => h.count);
 
     return (
-      <div className="chart-container">
-        <svg viewBox={`0 0 ${width} ${height}`} className="chart-svg" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--purple)" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="var(--purple)" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="chart-dark-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-
-          {/* Grid lines */}
-          <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} className="chart-grid-line" />
-          <line x1={paddingLeft} y1={paddingTop + (height - paddingTop - paddingBottom) / 3} x2={width - paddingRight} y2={paddingTop + (height - paddingTop - paddingBottom) / 3} className="chart-grid-line" />
-          <line x1={paddingLeft} y1={paddingTop + 2 * (height - paddingTop - paddingBottom) / 3} x2={width - paddingRight} y2={paddingTop + 2 * (height - paddingTop - paddingBottom) / 3} className="chart-grid-line" />
-          <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} className="chart-grid-line" />
-
-          {/* Fill Area */}
-          {areaData && <path d={areaData} className="chart-area" />}
-
-          {/* Line */}
-          {pathData && <path d={pathData} className="chart-line" />}
-
-          {/* Points */}
-          {points.map((p, i) => (
-            <g key={i}>
-              <circle cx={p.x} cy={p.y} r="5" className="chart-dot" />
-              {/* Tooltip on hover */}
-              <title>{`${p.date}: ${p.count} clicks`}</title>
-            </g>
-          ))}
-
-          {/* X Axis Labels (Dates) */}
-          {points.map((p, i) => {
-            if (i % 2 !== 0 && i !== points.length - 1) return null;
-            const dateObj = new Date(p.date);
-            const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            return (
-              <text key={i} x={p.x} y={height - 8} className="chart-label-x">
-                {label}
-              </text>
-            );
-          })}
-
-          {/* Y Axis Labels (Clicks Count) */}
-          <text x={paddingLeft - 8} y={paddingTop + 4} className="chart-label-y">{maxVal}</text>
-          <text x={paddingLeft - 8} y={paddingTop + (height - paddingTop - paddingBottom) / 3 + 4} className="chart-label-y">{Math.round(maxVal * 2 / 3)}</text>
-          <text x={paddingLeft - 8} y={paddingTop + 2 * (height - paddingTop - paddingBottom) / 3 + 4} className="chart-label-y">{Math.round(maxVal / 3)}</text>
-          <text x={paddingLeft - 8} y={height - paddingBottom + 4} className="chart-label-y">0</text>
-        </svg>
-      </div>
+      <ThemeProvider theme={lightTheme}>
+        <div style={{ width: '100%', height: 350, backgroundColor: '#ffffff', borderRadius: '8px', padding: '16px' }}>
+          <LineChart
+            xAxis={[{
+              data: xData,
+              scaleType: 'time',
+              valueFormatter: (value) => value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              tickLabelStyle: { fill: '#64748b' }
+            }]}
+            yAxis={[{
+              min: 0,
+              tickLabelStyle: { fill: '#64748b' },
+              valueFormatter: (value) => Number.isInteger(value) ? value.toString() : '',
+            }]}
+            series={[
+              {
+                id: 'Clicks',
+                data: yData,
+                area: true,
+                color: '#a287e29d',
+                showMark: false,
+              },
+            ]}
+            slotProps={{
+               popper: {
+                 sx: {
+                   '& .MuiChartsTooltip-root': {
+                     backgroundColor: '#ffffff',
+                     color: '#0f172a',
+                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                     border: '1px solid #e2e8f0'
+                   }
+                 }
+               }
+            }}
+            sx={{
+              '& .MuiChartsAxis-line': { stroke: '#cbd5e1' },
+              '& .MuiChartsAxis-tick': { stroke: '#cbd5e1' },
+              '& .MuiAreaElement-series-Clicks': {
+                fill: "url('#purpleGradient')",
+              },
+              '& .MuiLineElement-series-Clicks': {
+                stroke: '#8b5cf6',
+              },
+            }}
+            margin={{ top: 20, right: 20, bottom: 30, left: 40 }}
+          >
+            <defs>
+              <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+          </LineChart>
+        </div>
+      </ThemeProvider>
     );
   };
 
-  // Sidebar Menu Configuration (without Profile since it is in the footer)
-  const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { id: 'links', label: 'My Links', icon: <Link2 size={20} /> },
-    { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={20} /> },
-    { id: 'qrcodes', label: 'QR Codes', icon: <QrCode size={20} /> }
-  ];
-
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-layout">
-
-        {/* Collapsible Left Sidebar */}
-        <aside className="dashboard-sidebar">
-          {/* Logo row (Link icon in theme purple instead of leaf) */}
-          <div className="sidebar-logo-row">
-            <Link2 className="sidebar-logo-icon" size={24} style={{ color: 'var(--purple)', transform: 'rotate(-45deg)' }} />
-            <span className="sidebar-logo-text">URL<span style={{ color: 'var(--purple)' }}>ytics</span></span>
-          </div>
-
-          <hr className="sidebar-divider" />
-
-          {/* Menu items */}
-          <nav className="sidebar-nav">
-            {sidebarItems.map(item => (
-              <div
-                key={item.id}
-                className={`sidebar-nav-item ${activeTab === item.id ? 'active' : ''}`}
-                onClick={() => {
-                  handleTabChange(item.id);
-                  if (item.id !== 'analytics') {
-                    // Reset selected url context if switching away to another page
-                    
-                    setAnalyticsData(null);
-                  }
-                }}
-                title={item.label}
-              >
-                <span className="nav-item-icon">{item.icon}</span>
-                <span className="nav-item-text">{item.label}</span>
-              </div>
-            ))}
-          </nav>
-
-          {/* Footer (Profile item matching image position instead of logout) */}
-          <div className="sidebar-footer">
-            <hr className="sidebar-divider" />
-            <div
-              className={`sidebar-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-              onClick={() => {
-                handleTabChange('profile');
-                
-                setAnalyticsData(null);
-              }}
-              title="Profile"
-            >
-              <span className="nav-item-icon">
-                {currentUser?.profilePicture ? (
-                  <img src={currentUser.profilePicture} alt="Avatar" style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <User size={20} />
-                )}
-              </span>
-              <span className="nav-item-text">Profile</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Right Content Area */}
-        <div className="dashboard-main-wrapper">
-
-          {/* Sticky Navbar */}
-          <header className="dashboard-navbar">
-            <h2 className="navbar-page-title">
-              {activeTab === 'dashboard' ? (
-                <>URL<span style={{ color: 'var(--purple)', fontFamily: 'var(--font-sans)' }}>ytics</span></>
-              ) : (
-                activeTab === 'qrcodes' ? 'QR Codes' :
-                  activeTab === 'links' ? 'My Links' :
-                    activeTab === 'analytics' ? 'Analytics' :
-                      activeTab === 'profile' ? 'Profile' :
-                        activeTab
-              )}
-            </h2>
-
-            <div className="navbar-right">
-              {/* User Email Badge */}
-              <div className="user-badge-wrap">
-                {currentUser?.profilePicture ? (
-                  <img src={currentUser.profilePicture} alt="Avatar" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <span className="user-badge-avatar">
-                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : (currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U')}
-                  </span>
-                )}
-                <span>{currentUser?.name || currentUser?.email}</span>
-              </div>
-            </div>
-          </header>
-
-          {/* Dynamic main panel views */}
-          <main className="dashboard-main">
+    <DashboardLayout
+      activeTab={activeTab}
+      handleTabChange={handleTabChange}
+      currentUser={currentUser}
+      setAnalyticsData={setAnalyticsData}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+    >
             {error && (
               <div className="error-message" style={{ marginBottom: '1.5rem' }}>
                 <AlertCircle size={16} />
@@ -602,7 +444,7 @@ export default function Dashboard({ user, token, onLogout }) {
                       </div>
 
                       <div className="form-group" style={{ position: 'relative' }}>
-                        <label htmlFor="db-newPassword">Password (Optional)</label>
+                        <label htmlFor="db-newPassword">Password</label>
                         <div style={{ position: 'relative' }}>
                           <input
                             type={showNewPassword ? 'text' : 'password'}
@@ -631,7 +473,8 @@ export default function Dashboard({ user, token, onLogout }) {
                 <div className="dashboard-split-right">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
                     <h3 style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--black)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Link2 size={18} style={{ color: 'var(--purple)' }} /> My Links
+                      {/* <Link2 size={18} style={{ color: 'var(--purple)' }} />  */}
+                      My Links
                     </h3>
                     {/* <span style={{ fontSize: '0.8rem', color: 'var(--gray)', fontWeight: 600 }}>{urls.length} link{urls.length !== 1 ? 's' : ''}</span> */}
                   </div>
@@ -654,7 +497,7 @@ export default function Dashboard({ user, token, onLogout }) {
                               <div className="link-header-row">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   <span className="link-title" style={{ fontSize: '0.95rem' }} title={url.title}>{url.title}</span>
-                                  {url.password && <span className="link-badge link-badge--lock"><Shield size={10} /> Protected</span>}
+                                  {url.password && <span className="link-badge link-badge--lock">Protected</span>}
                                   {url.isActive === false && <span className="link-badge link-badge--off">Disabled</span>}
                                 </div>
                                 <span className="link-date">{new Date(url.createdAt).toLocaleDateString()}</span>
@@ -674,7 +517,7 @@ export default function Dashboard({ user, token, onLogout }) {
                                 <BarChart3 size={16} />
                               </button>
                               <button className="btn-icon-only" onClick={() => handleToggleActive(url)} title={url.isActive === false ? 'Enable' : 'Disable'}>
-                                <Power size={16} style={{ color: url.isActive === false ? '#94a3b8' : '#8b5cf6' }} />
+                                <Power size={16} style={{ color: url.isActive === false ? 'var(--gray)' : 'var(--purple)' }} />
                               </button>
                               <button className="btn-icon-only" onClick={() => openEditModal(url)} title="Edit">
                                 <Pencil size={16} />
@@ -710,7 +553,7 @@ export default function Dashboard({ user, token, onLogout }) {
                   </div>
                 ) : (
                   <div className="links-grid">
-                    {urls.map(url => {
+                    {urls.filter(u => u.title?.toLowerCase().includes(searchQuery.toLowerCase()) || u.longUrl?.toLowerCase().includes(searchQuery.toLowerCase()) || u.shortCode?.toLowerCase().includes(searchQuery.toLowerCase())).map(url => {
                       const origin = window.location.origin;
                       const shortUrl = `${origin}/r/${url.shortCode}`;
                       const isCopied = copiedUrlId === url.id;
@@ -723,7 +566,9 @@ export default function Dashboard({ user, token, onLogout }) {
                             <div className="link-header-row">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span className="link-title" title={url.title}>{url.title}</span>
-                                {url.password && <span className="link-badge link-badge--lock" title="Password protected"><Shield size={11} /> Protected</span>}
+                                {url.password && <span className="link-badge link-badge--lock" title="Password protected">
+                                  {/* <Shield size={11} />  */}
+                                Protected</span>}
                                 {url.isActive === false && <span className="link-badge link-badge--off">Disabled</span>}
                                 {/* <Power size={11} /> */}
                               </div>
@@ -761,10 +606,10 @@ export default function Dashboard({ user, token, onLogout }) {
                           </div>
 
                           <div className="link-actions-group">
-                            <span className="link-stats-badge">
+                            {/* <span className="link-stats-badge">
                               <TrendingUp size={14} style={{ color: 'var(--purple)' }} />
                               {url.clicksCount} clicks
-                            </span>
+                            </span> */}
 
                             <button
                               className="btn-icon-only"
@@ -819,7 +664,7 @@ export default function Dashboard({ user, token, onLogout }) {
                               onClick={() => handleToggleActive(url)}
                               title={url.isActive === false ? 'Enable link' : 'Disable link'}
                             >
-                              <Power size={18} style={{ color: url.isActive === false ? '#94a3b8' : '#8b5cf6' }} />
+                              <Power size={18} style={{ color: url.isActive === false ? 'var(--gray)' : 'var(--purple)' }} />
                             </button>
 
                             <button
@@ -933,7 +778,10 @@ export default function Dashboard({ user, token, onLogout }) {
                 ) : (
                   /* Detailed Subview */
                   <div>
-                    <button className="btn-back" onClick={() => {  setAnalyticsData(null); }}>
+                    <button className="btn-back" onClick={() => { 
+                      navigate('/dashboard/analytics');
+                      setAnalyticsData(null); 
+                    }}>
                       <ChevronLeft size={18} /> Back to selection list
                     </button>
 
@@ -949,10 +797,9 @@ export default function Dashboard({ user, token, onLogout }) {
                             <div className="link-actions-group">
                               <button
                                 className="btn-purple"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '1rem', padding: '0.5rem 1rem' }}
                                 onClick={() => handleExportCsv(analyticsData.url.id)}
                               >
-                                <FileDown size={22} /> Export CSV
+                                <FileDown size={18} /> Export CSV
                               </button>
                               <button
                                 className="btn-purple"
@@ -967,7 +814,7 @@ export default function Dashboard({ user, token, onLogout }) {
                           </span>
                         </div>
 
-                        {/* Top Stats Summary Blocks */}
+                        {/* Top Stats Summary Blocks
                         <div className="analytics-stats-summary">
                           <div className="stat-block">
                             <div className="stat-block-label">Total Redirects</div>
@@ -994,14 +841,14 @@ export default function Dashboard({ user, token, onLogout }) {
                               {Object.keys(analyticsData.analytics.browsers).sort((a, b) => analyticsData.analytics.browsers[b] - analyticsData.analytics.browsers[a])[0] || 'Chrome'}
                             </div>
                           </div>
-                        </div>
+                        </div> */}
 
                         {/* 3-Column Grid above the Timeline */}
                         <div className="analytics-top-grid">
 
                           {/* 1. Audience Tech Breakdown */}
                           <div className="analytics-card">
-                            <h3 className="analytics-card-title">Audience Tech Breakdown</h3>
+                            <h3 className="analytics-card-title">Audience Tech</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                               <div>
                                 <h4 style={{ fontSize: '0.85rem', color: 'var(--gray)', marginBottom: '0.8rem', fontWeight: 700 }}>DEVICE TYPES</h4>
@@ -1012,7 +859,6 @@ export default function Dashboard({ user, token, onLogout }) {
                                     {Object.entries(analyticsData.analytics.devices).map(([device, count]) => (
                                       <div key={device} className="breakdown-item">
                                         <div className="breakdown-label-wrap">
-                                          {getDeviceIcon(device)}
                                           <span style={{ textTransform: 'capitalize' }}>{device}</span>
                                         </div>
                                         <div className="breakdown-bar-container">
@@ -1034,7 +880,6 @@ export default function Dashboard({ user, token, onLogout }) {
                                     {Object.entries(analyticsData.analytics.browsers).map(([browser, count]) => (
                                       <div key={browser} className="breakdown-item">
                                         <div className="breakdown-label-wrap">
-                                          <Globe size={16} />
                                           <span>{browser}</span>
                                         </div>
                                         <div className="breakdown-bar-container">
@@ -1052,7 +897,8 @@ export default function Dashboard({ user, token, onLogout }) {
                           {/* 2. Traffic Channels */}
                           <div className="analytics-card">
                             <h3 className="analytics-card-title">
-                              <Globe size={18} style={{ color: 'var(--purple)' }} /> Traffic Channels
+                              {/* <Globe size={18} style={{ color: 'var(--purple)' }} /> */}
+                              Traffic Channels
                             </h3>
                             {Object.keys(analyticsData.analytics.referrers).length === 0 ? (
                               <div className="no-data" style={{ padding: '2rem' }}>No referrer data logged yet.</div>
@@ -1081,7 +927,7 @@ export default function Dashboard({ user, token, onLogout }) {
 
                           {/* 3. Recent Referrals Log */}
                           <div className="analytics-card">
-                            <h3 className="analytics-card-title">Recent Referrals Log</h3>
+                            <h3 className="analytics-card-title">Logs</h3>
                             {analyticsData.analytics.recentVisits.length === 0 ? (
                               <div className="no-data" style={{ padding: '2rem' }}>No clicks logged yet.</div>
                             ) : (
@@ -1123,7 +969,8 @@ export default function Dashboard({ user, token, onLogout }) {
                         {/* SVG Line Chart (Clicks Timeline) below in a full-width card with white background */}
                         <div className="analytics-card timeline-card" style={{ width: '100%' }}>
                           <h3 className="analytics-card-title">
-                            <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> Clicks Timeline (Last 15 Days)
+                            {/* <TrendingUp size={18} style={{ color: 'var(--purple)' }} /> */}
+                            Clicks Timeline
                           </h3>
                           {renderSvgLineChart(analyticsData.analytics.clickHistory)}
                         </div>
@@ -1374,8 +1221,6 @@ export default function Dashboard({ user, token, onLogout }) {
                 </div>
               </div>
             )}
-          </main>
-
           {/* Edit Link Modal */}
           {editingUrl && (
             <div className="edit-modal-overlay" onClick={() => setEditingUrl(null)}>
@@ -1497,8 +1342,6 @@ export default function Dashboard({ user, token, onLogout }) {
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }

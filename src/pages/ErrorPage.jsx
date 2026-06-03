@@ -1,4 +1,4 @@
-import errorSvg from './assets/error.svg';
+import errorSvg from '../assets/error.svg';
 
 const ERROR_CONFIGS = {
   link_disabled: {

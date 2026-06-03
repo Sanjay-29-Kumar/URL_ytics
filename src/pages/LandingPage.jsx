@@ -30,7 +30,6 @@ export default function LandingPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
             <nav className="nav">
               <a href="#features">Features</a>
-              <a href="#how-it-works">How It Works</a>
               <a href="#about">About</a>
             </nav>
 
@@ -51,7 +50,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="hero-content">
             <h1 className="hero-title">
-              Shorten Links. Track <span className="shiny-text">Performance</span>.
+              Shorten Links  <span className="shiny-text">Track Performance</span>
             </h1>
             <p className="hero-subtitle">
               Create clean, short links, manage them in customizable workspaces, and track real-time
@@ -59,12 +58,12 @@ export default function LandingPage() {
             </p>
 
             <div className="cta-buttons" style={{ marginBottom: '1rem' }}>
-                <button className="btn-primary" onClick={() => navigate('/signup')} style={{ padding: '0.9rem 1.8rem', fontSize: '1.05rem', marginTop: '1rem' }}>
+                {/* <button className="btn-primary" onClick={() => navigate('/signup')} style={{ padding: '0.9rem 1.8rem', fontSize: '1.05rem', marginTop: '1rem' }}>
                   Get Started for Free
-                </button>
-              <a href="#features" className="btn-large btn-secondary">
+                </button> */}
+              {/* <a href="#features" className="btn-large btn-secondary">
                 Explore Features
-              </a>
+              </a> */}
             </div>
           </div>
         </div>
@@ -73,7 +72,7 @@ export default function LandingPage() {
       {/* Features Grid Section */}
       <section className="features" id="features">
         <div className="container">
-          <h2 className="section-title">Powerful Features for Modern Creators</h2>
+          <h2 className="section-title">Features</h2>
           <p className="section-subtitle">
             Everything you need to optimize your links, organize campaigns, and track your audience reach.
           </p>
@@ -179,11 +178,11 @@ export default function LandingPage() {
         <div className="cta-background-glow"></div>
         <div className="container">
           <h2>Ready to Supercharge Your Link Performance?</h2>
-          <p>Join thousands of marketers, content creators, and corporate brands who trust URLytics to deliver clean links and real-time statistics.</p>
-          <button className="btn-large btn-white" onClick={() => navigate('/signup')}>
+          {/* <p>Join thousands of marketers, content creators, and corporate brands who trust URLytics to deliver clean links and real-time statistics.</p> */}
+          {/* <button className="btn-large btn-white" onClick={() => navigate('/signup')}>
             Get Started Free
-          </button>
-          <p className="cta-note">No credit card required • Free plan forever • Upgrade anytime</p>
+          </button> */}
+          <p className="cta-note">Free plan forever</p>
         </div>
       </section>
 
@@ -196,7 +195,7 @@ export default function LandingPage() {
                 URLytics
               </a>
               <p>
-                Advanced full-stack link management solution for marketing, campaigns, and audience intelligence.
+                Full-stack link management solution for marketing, campaigns, and analytics.
               </p>
             </div>
 
@@ -206,28 +205,24 @@ export default function LandingPage() {
               <a href="#how-it-works">How It Works</a>
             </div>
 
-            <div className="footer-column">
+            {/* <div className="footer-column">
               <h4>Resources</h4>
               <a href="#">Blog</a>
               <a href="#">API docs</a>
               <a href="#">Uptime status</a>
-            </div>
+            </div> */}
 
             <div className="footer-column">
               <h4>Company</h4>
               <a href="#">About Us</a>
-              <a href="#">Careers</a>
               <a href="#">Privacy Policy</a>
-              <a href="#">Terms of Use</a>
             </div>
           </div>
 
           <div className="footer-bottom">
-            <p>© {new Date().getFullYear()} URLytics. All rights reserved.</p>
+            <a href='https://buildwithmk.app' style={{ textDecoration: 'none', color: '#e6d8d890' }}>buildwithmk.app</a>
             <div className="social-links">
-              <a href="#">Twitter</a>
-              <a href="#">GitHub</a>
-              <a href="#">Discord</a>
+              <a href="https://github.com/murali2277/urlytics" style={{ textDecoration: 'none', color: '#e6d8d890' }}>GitHub</a>
             </div>
           </div>
         </div>
