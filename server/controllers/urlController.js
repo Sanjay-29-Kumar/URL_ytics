@@ -146,3 +146,126 @@ export const updateUrl = async (req, res) => {
     res.status(500).json({ error: 'Failed to update URL' });
   }
 };
+
+export const bulkCreateUrls = async (req, res) => {
+  const { urls } = req.body;
+  if (!urls || !Array.isArray(urls)) {
+    return res.status(400).json({ error: 'urls must be an array' });
+  }
+
+  const results = [];
+  const processedCodes = new Set();
+
+  for (let i = 0; i < urls.length; i++) {
+    const row = urls[i];
+    const { destinationUrl, title, customAlias, expiresAt, password } = row;
+    const rowIndex = i + 1; // 1-based index for rows
+
+    const longUrl = destinationUrl ? destinationUrl.trim() : null;
+
+    if (!longUrl) {
+      results.push({ row: rowIndex, success: false, error: 'destinationUrl is required' });
+      continue;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(longUrl);
+    } catch (err) {
+      results.push({ row: rowIndex, success: false, error: 'destinationUrl is not a valid URL format' });
+      continue;
+    }
+
+    // Validate expiresAt if provided
+    let expiry = null;
+    if (expiresAt) {
+      expiry = new Date(expiresAt);
+      if (isNaN(expiry.getTime())) {
+        results.push({ row: rowIndex, success: false, error: 'Invalid expiration date format' });
+        continue;
+      }
+      if (expiry <= new Date()) {
+        results.push({ row: rowIndex, success: false, error: 'Expiration date must be in the future' });
+        continue;
+      }
+    }
+
+    try {
+      let code = customAlias;
+      if (code) {
+        // Sanitize shortCode
+        code = code.trim().replace(/[^a-zA-Z0-9_-]/g, '');
+        if (code.length < 3) {
+          results.push({ row: rowIndex, success: false, error: 'Custom alias must be at least 3 characters long' });
+          continue;
+        }
+
+        // Check uniqueness in batch
+        if (processedCodes.has(code)) {
+          results.push({ row: rowIndex, success: false, error: `Custom alias "${code}" is duplicated in this batch` });
+          continue;
+        }
+
+        // Check uniqueness in database
+        const existing = await Url.findOne({ shortCode: code });
+        if (existing) {
+          results.push({ row: rowIndex, success: false, error: `Custom alias "${code}" is already in use` });
+          continue;
+        }
+      } else {
+        // Generate a random short code
+        let tries = 0;
+        let isUnique = false;
+        while (tries < 10 && !isUnique) {
+          code = Math.random().toString(36).substring(2, 8); // 6 chars
+          if (!processedCodes.has(code)) {
+            const existing = await Url.findOne({ shortCode: code });
+            if (!existing) {
+              isUnique = true;
+            }
+          }
+          tries++;
+        }
+        if (!isUnique) {
+          results.push({ row: rowIndex, success: false, error: 'Failed to generate a unique short code' });
+          continue;
+        }
+      }
+
+      processedCodes.add(code);
+
+      // Hash password if provided
+      let hashedPassword = null;
+      if (password && password.toString().trim()) {
+        hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
+      }
+
+      const newUrl = new Url({
+        userId: req.user.id,
+        longUrl,
+        shortCode: code,
+        title: title || longUrl,
+        clicksCount: 0,
+        expiresAt: expiry,
+        isActive: true,
+        password: hashedPassword
+      });
+
+      await newUrl.save();
+      results.push({ row: rowIndex, success: true, url: newUrl });
+    } catch (error) {
+      console.error(`Bulk create URL error on row ${rowIndex}:`, error);
+      results.push({ row: rowIndex, success: false, error: error.message || 'Failed to save URL' });
+    }
+  }
+
+  const successList = results.filter(r => r.success).map(r => r.url);
+  const failureList = results.filter(r => !r.success).map(r => ({ row: r.row, error: r.error }));
+
+  res.status(201).json({
+    successCount: successList.length,
+    failedCount: failureList.length,
+    urls: successList,
+    errors: failureList
+  });
+};

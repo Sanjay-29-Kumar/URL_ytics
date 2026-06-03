@@ -16,7 +16,8 @@ import {
   updateUrl as apiUpdateUrl,
   deleteUrl as apiDeleteUrl,
   getAnalytics,
-  getExportCsvUrl
+  getExportCsvUrl,
+  bulkCreateUrls as apiBulkCreateUrls
 } from '../services/urlService';
 import { updateProfile as apiUpdateProfile } from '../services/authService';
 
@@ -33,6 +34,12 @@ export default function Dashboard({
   const navigate = useNavigate();
   const activeTab = tab || 'dashboard';
   const selectedUrlId = routeUrlId || null;
+
+  // Bulk shortener states
+  const [builderMode, setBuilderMode] = useState('single'); // 'single' | 'bulk'
+  const [csvFile, setCsvFile] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [bulkReport, setBulkReport] = useState(null);
 
   const handleTabChange = (newTab) => {
     if (newTab === 'dashboard') {
@@ -106,6 +113,116 @@ export default function Dashboard({
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const parseCSV = (text) => {
+    const lines = text.split(/\r?\n/);
+    if (lines.length === 0) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+    const data = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      for (let c = 0; c < line.length; c++) {
+        const char = line[c];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      
+      const row = {};
+      headers.forEach((header, index) => {
+        let val = values[index] || '';
+        val = val.replace(/^["']|["']$/g, '');
+        
+        let key = header;
+        if (header === 'longUrl') key = 'destinationUrl';
+        if (header === 'shortCode') key = 'customAlias';
+        
+        row[key] = val;
+      });
+      data.push(row);
+    }
+    return data;
+  };
+
+  const downloadCsvTemplate = () => {
+    const headers = 'destinationUrl,title,customAlias,password,expiresAt\n';
+    const row1 = 'https://example.com/promo1,Promo Link 1,custom123,pass123,2026-12-31T23:59:59Z\n';
+    const row2 = 'https://example.com/promo2,Promo Link 2,,,';
+    const blob = new Blob([headers + row1 + row2], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'urlytics_bulk_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+    if (!csvFile) return;
+
+    setIsImporting(true);
+    setError('');
+    setSuccess('');
+    setBulkReport(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        const parsedUrls = parseCSV(text);
+
+        if (parsedUrls.length === 0) {
+          throw new Error('CSV file is empty or invalid.');
+        }
+
+        const data = await apiBulkCreateUrls(token, parsedUrls);
+        
+        if (data.urls && data.urls.length > 0) {
+          setUrls([...data.urls, ...urls]);
+        }
+
+        setBulkReport({
+          successCount: data.successCount,
+          failedCount: data.failedCount,
+          errors: data.errors
+        });
+
+        if (data.successCount > 0) {
+          setSuccess(`Successfully imported ${data.successCount} links!`);
+        }
+        if (data.failedCount > 0) {
+          setError(`Failed to import ${data.failedCount} links.`);
+        }
+        
+        setCsvFile(null);
+      } catch (err) {
+        setError(err.message || 'Failed to parse or upload CSV.');
+      } finally {
+        setIsImporting(false);
+      }
+    };
+    reader.onerror = () => {
+      setError('Failed to read CSV file.');
+      setIsImporting(false);
+    };
+    reader.readAsText(csvFile);
   };
 
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -400,83 +517,234 @@ export default function Dashboard({
             {activeTab === 'dashboard' && (
               <div className="dashboard-split-layout">
 
-                {/* LEFT COLUMN — Create Short Link form */}
+                {/* LEFT COLUMN — Create Short Link / Bulk Upload Form */}
                 <div className="dashboard-split-left">
                   <div className="link-builder-card" style={{ boxShadow: 'none', border: '1.5px solid var(--border-color)', marginBottom: 0 }}>
-                    <h3 className="link-builder-title">Create a Short Link</h3>
-                    <form onSubmit={handleCreateUrl} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label htmlFor="db-longUrl">Destination URL*</label>
-                        <input
-                          type="url"
-                          id="db-longUrl"
-                          className="form-input"
-                          placeholder="https://example.com/very-long-url-path"
-                          value={newLongUrl}
-                          onChange={(e) => setNewLongUrl(e.target.value)}
-                          required
-                        />
-                      </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setBuilderMode('single'); setBulkReport(null); }}
+                        className={`tab-btn ${builderMode === 'single' ? 'active' : ''}`}
+                        style={{
+                          flex: 1,
+                          padding: '0.5rem',
+                          background: builderMode === 'single' ? 'var(--light-purple)' : 'transparent',
+                          color: builderMode === 'single' ? 'var(--purple)' : 'var(--gray)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontFamily: 'var(--font-cursive)'
+                        }}
+                      >
+                        Single Link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setBuilderMode('bulk'); setBulkReport(null); }}
+                        className={`tab-btn ${builderMode === 'bulk' ? 'active' : ''}`}
+                        style={{
+                          flex: 1,
+                          padding: '0.5rem',
+                          background: builderMode === 'bulk' ? 'var(--light-purple)' : 'transparent',
+                          color: builderMode === 'bulk' ? 'var(--purple)' : 'var(--gray)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontFamily: 'var(--font-cursive)'
+                        }}
+                      >
+                        Bulk Import (CSV)
+                      </button>
+                    </div>
 
-                      <div className="form-group">
-                        <label htmlFor="db-title">Title</label>
-                        <input
-                          type="text"
-                          id="db-title"
-                          className="form-input"
-                          placeholder="Summer Promo"
-                          value={newTitle}
-                          onChange={(e) => setNewTitle(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="db-customCode">Custom Alias</label>
-                        <input
-                          type="text"
-                          id="db-customCode"
-                          className="form-input"
-                          placeholder="promo2026"
-                          value={customCode}
-                          onChange={(e) => setCustomCode(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="db-expiresAt">Expiration</label>
-                        <input
-                          type="datetime-local"
-                          id="db-expiresAt"
-                          className="form-input"
-                          value={expiresAt}
-                          onChange={(e) => setExpiresAt(e.target.value)}
-                          min={new Date().toISOString().slice(0, 16)}
-                        />
-                      </div>
-
-                      <div className="form-group" style={{ position: 'relative' }}>
-                        <label htmlFor="db-newPassword">Password</label>
-                        <div style={{ position: 'relative' }}>
+                    {builderMode === 'single' ? (
+                      <form onSubmit={handleCreateUrl} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label htmlFor="db-longUrl">Destination URL*</label>
                           <input
-                            type={showNewPassword ? 'text' : 'password'}
-                            id="db-newPassword"
+                            type="url"
+                            id="db-longUrl"
                             className="form-input"
-                            placeholder="Protect this link"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            style={{ paddingRight: '2.5rem' }}
+                            placeholder="https://example.com/very-long-url-path"
+                            value={newLongUrl}
+                            onChange={(e) => setNewLongUrl(e.target.value)}
+                            required
                           />
-                          <button type="button" onClick={() => setShowNewPassword(p => !p)}
-                            style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', padding: 0 }}>
-                            {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="db-title">Title</label>
+                          <input
+                            type="text"
+                            id="db-title"
+                            className="form-input"
+                            placeholder="Summer Promo"
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="db-customCode">Custom Alias</label>
+                          <input
+                            type="text"
+                            id="db-customCode"
+                            className="form-input"
+                            placeholder="promo2026"
+                            value={customCode}
+                            onChange={(e) => setCustomCode(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="db-expiresAt">Expiration</label>
+                          <input
+                            type="datetime-local"
+                            id="db-expiresAt"
+                            className="form-input"
+                            value={expiresAt}
+                            onChange={(e) => setExpiresAt(e.target.value)}
+                            min={new Date().toISOString().slice(0, 16)}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ position: 'relative' }}>
+                          <label htmlFor="db-newPassword">Password</label>
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              type={showNewPassword ? 'text' : 'password'}
+                              id="db-newPassword"
+                              className="form-input"
+                              placeholder="Protect this link"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              style={{ paddingRight: '2.5rem' }}
+                            />
+                            <button type="button" onClick={() => setShowNewPassword(p => !p)}
+                              style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', padding: 0 }}>
+                              {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <button type="submit" className="link-builder-submit" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+                          <Plus size={18} /> Shorten Link
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleBulkUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label>Upload CSV File*</label>
+                          <div
+                            style={{
+                              border: '2px dashed var(--border-color)',
+                              borderRadius: '12px',
+                              padding: '1.5rem',
+                              textAlign: 'center',
+                              cursor: 'pointer',
+                              background: '#f8fafc',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '0.5rem'
+                            }}
+                            onClick={() => document.getElementById('csv-file-input').click()}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                                setCsvFile(e.dataTransfer.files[0]);
+                              }
+                            }}
+                          >
+                            <FileDown size={32} style={{ color: 'var(--purple)', marginBottom: '0.25rem' }} />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--soft-black)', wordBreak: 'break-all' }}>
+                              {csvFile ? csvFile.name : 'Choose a CSV file or drag it here'}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--gray)' }}>
+                              Supported headers: destinationUrl, title, customAlias, password, expiresAt
+                            </span>
+                            <input
+                              type="file"
+                              id="csv-file-input"
+                              accept=".csv"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setCsvFile(e.target.files[0]);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                          <button
+                            type="button"
+                            onClick={downloadCsvTemplate}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--purple)',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              fontFamily: 'var(--font-cursive)'
+                            }}
+                          >
+                            <Download size={14} /> Download CSV Template
                           </button>
                         </div>
-                      </div>
 
-                      <button type="submit" className="link-builder-submit" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                        <Plus size={18} /> Shorten Link
-                      </button>
-                    </form>
+                        <button
+                          type="submit"
+                          className="link-builder-submit"
+                          disabled={!csvFile || isImporting}
+                          style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}
+                        >
+                          <Plus size={18} /> {isImporting ? 'Importing...' : 'Upload & Create'}
+                        </button>
+
+                        {bulkReport && (
+                          <div
+                            style={{
+                              marginTop: '0.5rem',
+                              padding: '0.85rem',
+                              borderRadius: '10px',
+                              background: '#f8fafc',
+                              border: '1.5px solid var(--border-color)',
+                              fontSize: '0.82rem'
+                            }}
+                          >
+                            <h4 style={{ fontWeight: 700, color: 'var(--black)', marginBottom: '0.4rem' }}>Import Summary</h4>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.4rem' }}>
+                              <div style={{ color: '#10b981', fontWeight: 700 }}>✓ {bulkReport.successCount} Created</div>
+                              <div style={{ color: '#ef4444', fontWeight: 700 }}>✗ {bulkReport.failedCount} Failed</div>
+                            </div>
+                            {bulkReport.errors && bulkReport.errors.length > 0 && (
+                              <div style={{ marginTop: '0.5rem', maxHeight: '100px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.4rem' }}>
+                                {bulkReport.errors.map((err, idx) => (
+                                  <div key={idx} style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                                    Row {err.row}: {err.error}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </form>
+                    )}
                   </div>
                 </div>
 

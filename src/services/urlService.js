@@ -69,3 +69,19 @@ export const getAnalytics = async (token, urlId) => {
 export const getExportCsvUrl = (urlId) => {
   return `${API_BASE}/api/urls/${urlId}/analytics/export`;
 };
+
+export const bulkCreateUrls = async (token, urls) => {
+  const res = await fetch(`${API_BASE}/api/urls/bulk`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ urls })
+  });
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error || 'Failed to create bulk short links');
+  }
+  return res.json();
+};
