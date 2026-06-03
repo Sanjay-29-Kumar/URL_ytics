@@ -3,6 +3,8 @@ import { X, AlertCircle } from 'lucide-react';
 import loginSvg from './assets/login.svg';
 import shortenerSvg from './assets/link_shortener.svg';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export default function AuthModal({ isOpen, onClose, onSuccess, activeTab: initialTab }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
@@ -40,7 +42,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, activeTab: initi
     }
 
     setLoading(true);
-    const endpoint = activeTab === 'login' ? '/api/auth/login' : '/api/auth/register';
+    const endpoint = activeTab === 'login' ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
 
     try {
       const response = await fetch(endpoint, {

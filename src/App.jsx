@@ -5,6 +5,8 @@ import AuthPage from './AuthPage.jsx';
 import ErrorPage from './ErrorPage.jsx';
 import PasswordUnlockPage from './PasswordUnlockPage.jsx';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -46,7 +48,7 @@ function App() {
 
   const verifySession = async (authToken) => {
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
       const data = await res.json();

@@ -135,7 +135,7 @@ export default function Dashboard({ user, token, onLogout }) {
       fetch('/api/urls', { headers: { 'Authorization': `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data) setUrls(data); })
-        .catch(() => {});
+        .catch(() => { });
     }, 10000);
     return () => clearInterval(interval);
   }, [activeTab, token]);
@@ -225,7 +225,15 @@ export default function Dashboard({ user, token, onLogout }) {
     } catch { /* ignore */ }
   };
 
-
+  // Export analytics CSV for a URL
+  const handleExportCsv = (urlId) => {
+    const a = document.createElement('a');
+    a.href = `/api/urls/${urlId}/analytics/export`;
+    a.setAttribute('download', '');
+    // Pass auth by query param since it's a direct download link
+    // Instead, open in same tab (the server sets Content-Disposition)
+    window.open(`/api/urls/${urlId}/analytics/export`, '_blank');
+  };
 
   // API Call: Update URL
   const handleUpdateUrl = async () => {
@@ -306,35 +314,6 @@ export default function Dashboard({ user, token, onLogout }) {
     navigator.clipboard.writeText(shortUrl);
     setCopiedUrlId(urlId);
     setTimeout(() => setCopiedUrlId(null), 2000);
-  };
-
-  // Helper: Export analytics as CSV
-  const handleExportCsv = async (urlId) => {
-    try {
-      const res = await fetch(`/api/urls/${urlId}/analytics/export`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to export CSV. Please try again.');
-        return;
-      }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      // Try to get filename from Content-Disposition header
-      const disposition = res.headers.get('Content-Disposition') || '';
-      const match = disposition.match(/filename="([^"]+)"/);
-      a.download = match ? match[1] : `urlytics-analytics-${urlId}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('CSV export error:', err);
-      alert('Network error while exporting CSV.');
-    }
   };
 
   // Helper: Get Icon for Device
@@ -636,75 +615,69 @@ export default function Dashboard({ user, token, onLogout }) {
 
                 {/* RIGHT COLUMN — My Links list */}
                 <div className="dashboard-split-right">
-                  {/* Sticky header inside the right panel */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexShrink: 0 }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--black)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Link2 size={17} style={{ color: 'var(--purple)' }} /> My Links
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--black)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Link2 size={18} style={{ color: 'var(--purple)' }} /> My Links
                     </h3>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--gray)', fontWeight: 600, background: 'var(--light-gray)', padding: '2px 10px', borderRadius: '100px' }}>
-                      {urls.length} link{urls.length !== 1 ? 's' : ''}
-                    </span>
+                    {/* <span style={{ fontSize: '0.8rem', color: 'var(--gray)', fontWeight: 600 }}>{urls.length} link{urls.length !== 1 ? 's' : ''}</span> */}
                   </div>
 
-                  <div className="dashboard-split-right-inner">
-                    {loadingUrls ? (
-                      <div className="spinner"></div>
-                    ) : urls.length === 0 ? (
-                      <div className="no-data" style={{ padding: '3rem', textAlign: 'center' }}>
-                        <Link2 size={40} style={{ color: '#cbd5e1', marginBottom: '1rem' }} />
-                        <p style={{ color: 'var(--gray)' }}>Create your first short link using the form on the left.</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {urls.map(url => {
-                          const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
-                          const isCopied = copiedUrlId === url.id;
-                          return (
-                            <div key={url.id} className={`link-card ${url.isActive === false ? 'link-card--disabled' : ''}`} style={{ padding: '0.85rem 1.1rem', marginBottom: 0 }}>
-                              <div className="link-info">
-                                <div className="link-header-row">
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                    <span className="link-title" style={{ fontSize: '0.92rem' }} title={url.title}>{url.title}</span>
-                                    {url.password && <span className="link-badge link-badge--lock"><Shield size={10} /> Protected</span>}
-                                    {url.isActive === false && <span className="link-badge link-badge--off">Disabled</span>}
-                                  </div>
-                                  <span className="link-date">{new Date(url.createdAt).toLocaleDateString()}</span>
+                  {loadingUrls ? (
+                    <div className="spinner"></div>
+                  ) : urls.length === 0 ? (
+                    <div className="no-data" style={{ padding: '3rem', textAlign: 'center' }}>
+                      <Link2 size={40} style={{ color: '#cbd5e1', marginBottom: '1rem' }} />
+                      <p style={{ color: 'var(--gray)' }}>Create your first short link using the form on the left.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowY: 'auto', maxHeight: 'calc(100vh - 180px)', paddingRight: '4px' }}>
+                      {urls.map(url => {
+                        const shortUrl = `${window.location.origin}/r/${url.shortCode}`;
+                        const isCopied = copiedUrlId === url.id;
+                        return (
+                          <div key={url.id} className={`link-card ${url.isActive === false ? 'link-card--disabled' : ''}`} style={{ padding: '1rem 1.25rem', marginBottom: 0 }}>
+                            <div className="link-info">
+                              <div className="link-header-row">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <span className="link-title" style={{ fontSize: '0.95rem' }} title={url.title}>{url.title}</span>
+                                  {url.password && <span className="link-badge link-badge--lock"><Shield size={10} /> Protected</span>}
+                                  {url.isActive === false && <span className="link-badge link-badge--off">Disabled</span>}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginTop: '0.25rem' }}>
-                                  <a href={shortUrl} target="_blank" rel="noopener noreferrer" className="link-short" style={{ fontSize: '0.82rem' }}>
-                                    {shortUrl} <ArrowRight size={11} />
-                                  </a>
-                                  <span className="link-long" style={{ fontSize: '0.76rem' }} title={url.longUrl}>{url.longUrl}</span>
-                                </div>
+                                <span className="link-date">{new Date(url.createdAt).toLocaleDateString()}</span>
                               </div>
-                              <div className="link-actions-group" style={{ gap: '0.25rem' }}>
-                                <button className="btn-icon-only" onClick={() => handleCopyLink(url.id, shortUrl)} title="Copy">
-                                  {isCopied ? <Check size={15} style={{ color: 'var(--purple)' }} /> : <Copy size={15} />}
-                                </button>
-                                <button className="btn-icon-only" onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }} title="Analytics">
-                                  <BarChart3 size={15} />
-                                </button>
-                                <button className="btn-icon-only" onClick={() => handleToggleActive(url)} title={url.isActive === false ? 'Enable' : 'Disable'}>
-                                  <Power size={15} style={{ color: url.isActive === false ? '#94a3b8' : '#8b5cf6' }} />
-                                </button>
-                                <button className="btn-icon-only" onClick={() => openEditModal(url)} title="Edit">
-                                  <Pencil size={15} />
-                                </button>
-                                <button className="btn-icon-only" onClick={() => handleDeleteUrl(url.id)} title="Delete">
-                                  <Trash2 size={15} style={{ color: '#ef4444' }} />
-                                </button>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.3rem' }}>
+                                <a href={shortUrl} target="_blank" rel="noopener noreferrer" className="link-short" style={{ fontSize: '0.85rem' }}>
+                                  {shortUrl} <ArrowRight size={12} />
+                                </a>
+                                <span className="link-long" style={{ fontSize: '0.78rem' }} title={url.longUrl}>{url.longUrl}</span>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                            <div className="link-actions-group" style={{ gap: '0.3rem' }}>
+                              <button className="btn-icon-only" onClick={() => handleCopyLink(url.id, shortUrl)} title="Copy">
+                                {isCopied ? <Check size={16} style={{ color: 'var(--purple)' }} /> : <Copy size={16} />}
+                              </button>
+                              <button className="btn-icon-only" onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }} title="Analytics">
+                                <BarChart3 size={16} />
+                              </button>
+                              <button className="btn-icon-only" onClick={() => handleToggleActive(url)} title={url.isActive === false ? 'Enable' : 'Disable'}>
+                                <Power size={16} style={{ color: url.isActive === false ? '#94a3b8' : '#8b5cf6' }} />
+                              </button>
+                              <button className="btn-icon-only" onClick={() => openEditModal(url)} title="Edit">
+                                <Pencil size={16} />
+                              </button>
+                              <button className="btn-icon-only" onClick={() => handleDeleteUrl(url.id)} title="Delete">
+                                <Trash2 size={16} style={{ color: '#ef4444' }} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
               </div>
             )}
-
 
             {/* TAB 2: My Links Panel */}
             {activeTab === 'links' && (
@@ -774,6 +747,10 @@ export default function Dashboard({ user, token, onLogout }) {
                           </div>
 
                           <div className="link-actions-group">
+                            <span className="link-stats-badge">
+                              <TrendingUp size={14} style={{ color: 'var(--purple)' }} />
+                              {url.clicksCount} clicks
+                            </span>
 
                             <button
                               className="btn-icon-only"
@@ -836,7 +813,7 @@ export default function Dashboard({ user, token, onLogout }) {
                               onClick={() => openEditModal(url)}
                               title="Edit link"
                             >
-                              <Pencil size={18}/>
+                              <Pencil size={18} />
                             </button>
 
                             <button
@@ -958,14 +935,13 @@ export default function Dashboard({ user, token, onLogout }) {
                             <div className="link-actions-group">
                               <button
                                 className="btn-purple"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', padding: '0.55rem 1.1rem' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '1rem', padding: '0.5rem 1rem' }}
                                 onClick={() => handleExportCsv(analyticsData.url.id)}
                               >
-                                <FileDown size={16} /> Export CSV
+                                <FileDown size={22} /> Export CSV
                               </button>
                               <button
                                 className="btn-purple"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', padding: '0.55rem 1.1rem' }}
                                 onClick={() => handleCopyLink(analyticsData.url.id, `${window.location.origin}/r/${analyticsData.url.shortCode}`)}
                               >
                                 {copiedUrlId === analyticsData.url.id ? 'Copied!' : 'Copy Short URL'}
@@ -1204,10 +1180,10 @@ export default function Dashboard({ user, token, onLogout }) {
                 {/* Left Column: Profile Picture / Photo Manager */}
                 <div className="profile-left-col">
                   <div style={{ flexGrow: 1, position: 'relative', overflow: 'hidden' }}>
-                    <img 
-                      src={profilePic || defaultProfilePng} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                      alt="Profile Avatar" 
+                    <img
+                      src={profilePic || defaultProfilePng}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      alt="Profile Avatar"
                     />
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)' }} />
                     <div style={{ position: 'absolute', bottom: '15px', left: '15px', color: 'white', textAlign: 'left' }}>
@@ -1215,21 +1191,21 @@ export default function Dashboard({ user, token, onLogout }) {
                     </div>
                   </div>
                   <div style={{ padding: '1rem', display: 'flex', justifyContent: 'center', background: 'white' }}>
-                    <button 
-                      type="button" 
-                      onClick={() => fileInputRef.current.click()} 
-                      className="btn-purple" 
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current.click()}
+                      className="btn-purple"
                       style={{ width: '100%', padding: '0.6rem', fontSize: '0.85rem', borderRadius: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', border: 'none', cursor: 'pointer' }}
                     >
                       <User size={16} /> Change Profile Photo
                     </button>
                   </div>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleProfilePicChange} 
-                    accept="image/*" 
-                    style={{ display: 'none' }} 
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleProfilePicChange}
+                    accept="image/*"
+                    style={{ display: 'none' }}
                   />
                 </div>
 
@@ -1263,20 +1239,20 @@ export default function Dashboard({ user, token, onLogout }) {
                   <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Full Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Sami Rahman" 
-                        value={profileName} 
+                      <input
+                        type="text"
+                        placeholder="Sami Rahman"
+                        value={profileName}
                         onChange={(e) => setProfileName(e.target.value)}
                         style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', background: 'transparent' }}
                       />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Phone Number</label>
-                      <input 
-                        type="text" 
-                        placeholder="+91 98123-xxxxx" 
-                        value={profilePhone} 
+                      <input
+                        type="text"
+                        placeholder="+91 98123-xxxxx"
+                        value={profilePhone}
                         onChange={(e) => setProfilePhone(e.target.value)}
                         style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', background: 'transparent' }}
                       />
@@ -1286,9 +1262,9 @@ export default function Dashboard({ user, token, onLogout }) {
                   {/* Email Input */}
                   <div style={{ marginBottom: '2rem' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--gray)', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Email Address</label>
-                    <input 
-                      type="email" 
-                      value={profileEmail} 
+                    <input
+                      type="email"
+                      value={profileEmail}
                       disabled
                       style={{ width: '100%', border: 'none', borderBottom: '1px solid var(--border-color)', padding: '0.6rem 0', outline: 'none', fontSize: '0.95rem', color: 'var(--gray)', background: 'transparent', cursor: 'not-allowed' }}
                     />
@@ -1298,13 +1274,13 @@ export default function Dashboard({ user, token, onLogout }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#8b5cf6' }}>Send report to mail</span>
                     <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={smsAlerts} 
-                        onChange={(e) => setSmsAlerts(e.target.checked)} 
-                        style={{ opacity: 0, width: 0, height: 0 }} 
+                      <input
+                        type="checkbox"
+                        checked={smsAlerts}
+                        onChange={(e) => setSmsAlerts(e.target.checked)}
+                        style={{ opacity: 0, width: 0, height: 0 }}
                       />
-                      <span 
+                      <span
                         style={{
                           position: 'absolute',
                           top: 0, left: 0, right: 0, bottom: 0,
@@ -1313,7 +1289,7 @@ export default function Dashboard({ user, token, onLogout }) {
                           borderRadius: '24px'
                         }}
                       >
-                        <span 
+                        <span
                           style={{
                             position: 'absolute',
                             height: '18px', width: '18px',
@@ -1330,20 +1306,20 @@ export default function Dashboard({ user, token, onLogout }) {
 
                   {/* Save button and Logout side-by-side */}
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '1rem' }}>
-                    <button 
-                      type="button" 
-                      onClick={handleSaveProfile} 
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
                       disabled={isSavingProfile}
-                      style={{ 
+                      style={{
                         flex: 2,
-                        padding: '0.8rem', 
-                        borderRadius: '100px', 
-                        border: '1px solid #8b5cf6', 
+                        padding: '0.8rem',
+                        borderRadius: '100px',
+                        border: '1px solid #8b5cf6',
                         background: 'transparent',
                         color: '#8b5cf6',
-                        fontWeight: '700', 
-                        fontSize: '1rem', 
-                        cursor: 'pointer', 
+                        fontWeight: '700',
+                        fontSize: '1rem',
+                        cursor: 'pointer',
                         // boxShadow: '0 4px 15px rgba(244, 63, 94, 0.3)',
                         transition: 'all 0.2s',
                         display: 'flex',
@@ -1364,19 +1340,19 @@ export default function Dashboard({ user, token, onLogout }) {
                       {isSavingProfile ? 'Saving...' : 'Save'}
                     </button>
 
-                    <button 
+                    <button
                       type="button"
-                      className="btn-back" 
-                      onClick={onLogout} 
+                      className="btn-back"
+                      onClick={onLogout}
                       style={{ flex: 1.2, justifyContent: 'center', margin: 0, padding: '0.75rem', borderRadius: '100px', border: '1.5px solid var(--border-color)', background: 'transparent', color: 'var(--gray)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', height: '45px', fontSize: '0.9rem' }}
-                    onMouseEnter={(e) => {
+                      onMouseEnter={(e) => {
                         e.target.style.color = '#8b5cf6';
                         e.target.style.border = '1px solid #8b5cf6';
-                    }}
-                    onMouseLeave={(e) => {
+                      }}
+                      onMouseLeave={(e) => {
                         e.target.style.color = 'var(--gray)';
                         e.target.style.border = '1.5px solid var(--border-color)';
-                    }}
+                      }}
                     >
                       <LogOut size={16} /> Log Out
                     </button>
