@@ -74,7 +74,7 @@ export default function LandingPage() {
         <div className="container">
           <h2 className="section-title">Features</h2>
           <p className="section-subtitle">
-            Everything you need to optimize your links, organize campaigns, and track your audience reach.
+            Everything you need to optimize your links, secure your campaigns, and track your audience reach.
           </p>
 
           <div className="features-grid">
@@ -83,7 +83,15 @@ export default function LandingPage() {
                 <Link2 size={32} />
               </div>
               <h3>Branded Custom Links</h3>
-              <p>Create clean, memorable custom back-halves to reflect your brand and boost click rates by up to 34%.</p>
+              <p>Create clean, memorable custom back-halves to reflect your brand and boost click-through rates.</p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Layers size={32} />
+              </div>
+              <h3>Bulk CSV Import</h3>
+              <p>Shorten hundreds of destination links in seconds by uploading a simple CSV sheet with customized options.</p>
             </div>
 
             <div className="feature-card">
@@ -91,15 +99,15 @@ export default function LandingPage() {
                 <BarChart3 size={32} />
               </div>
               <h3>Real-Time Analytics</h3>
-              <p>Track click counts, referral channels, user geolocations, browsers, and device types instantly as they happen.</p>
+              <p>Track click counts and visualize traffic over daily timelines using interactive charts and graphs.</p>
             </div>
 
             <div className="feature-card">
               <div className="feature-icon">
-                <Layers size={32} />
+                <Shield size={32} />
               </div>
-              <h3>Workspaces Organization</h3>
-              <p>Group your links into separate workspaces for different client projects, social profiles, or team campaigns.</p>
+              <h3>Password Protection</h3>
+              <p>Lock your redirection paths with end-user passwords, securely validated with server-side hashing.</p>
             </div>
 
             <div className="feature-card">
@@ -107,23 +115,15 @@ export default function LandingPage() {
                 <QrCode size={32} />
               </div>
               <h3>Dynamic QR Codes</h3>
-              <p>Automatically generate corresponding high-quality QR codes for marketing prints, packaging, and offline sharing.</p>
+              <p>Automatically generate high-quality QR codes for print media, offline flyers, and packaging.</p>
             </div>
 
             <div className="feature-card">
               <div className="feature-icon">
                 <Globe size={32} />
               </div>
-              <h3>Referrer Tracking</h3>
-              <p>Find out exactly where your traffic comes from - whether it's Twitter/X, LinkedIn, Google Search, or direct access.</p>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon">
-                <Shield size={32} />
-              </div>
-              <h3>Fast & Secure Redirection</h3>
-              <p>Enjoy blazing-fast redirect times under 50ms with enterprise SSL security and built-in spam protection filters.</p>
+              <h3>Referrer & Device Logs</h3>
+              <p>Find out exactly where visitors come from—including referral websites, browsers, and mobile or desktop device models.</p>
             </div>
           </div>
         </div>
@@ -139,32 +139,32 @@ export default function LandingPage() {
             <div className="step">
               <div className="step-number">1</div>
               <div className="step-content">
-                <h3>Paste Your Link</h3>
-                <p>Input your long destination URL into our builder interface, select your workspace, and add a title.</p>
+                <h3>Input Your Links</h3>
+                <p>Paste a single destination URL, or upload a CSV file to generate multiple short links in a single click.</p>
               </div>
             </div>
 
             <div className="step">
               <div className="step-number">2</div>
               <div className="step-content">
-                <h3>Customize Alias</h3>
-                <p>Generate a clean random short-link or write a custom URL back-half to make it memorable.</p>
+                <h3>Add Protection & Expiry</h3>
+                <p>Define custom alias back-halves, add password access gates, or specify expiration timestamps.</p>
               </div>
             </div>
 
             <div className="step">
               <div className="step-number">3</div>
               <div className="step-content">
-                <h3>Share QR & Short URL</h3>
-                <p>Distribute your link on social media posts, email newsletters, or print out the generated QR code.</p>
+                <h3>Share Anywhere</h3>
+                <p>Distribute clean short links across social profiles, or print out auto-generated QR codes.</p>
               </div>
             </div>
 
             <div className="step">
               <div className="step-number">4</div>
               <div className="step-content">
-                <h3>Track Insights</h3>
-                <p>Monitor your performance on our interactive dashboard with detailed charts and click histories.</p>
+                <h3>Track Daily Insights</h3>
+                <p>Analyze traffic flow, click histories, browsers, and referrers using the interactive dashboard.</p>
               </div>
             </div>
           </div>
