@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import defaultProfilePng from './assets/profile.png';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export default function Dashboard({ user, token, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [urls, setUrls] = useState([]);
@@ -44,7 +46,7 @@ export default function Dashboard({ user, token, onLogout }) {
     setProfileSuccess('');
     setProfileError('');
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +134,7 @@ export default function Dashboard({ user, token, onLogout }) {
   useEffect(() => {
     if (activeTab !== 'dashboard' && activeTab !== 'analytics') return;
     const interval = setInterval(() => {
-      fetch('/api/urls', { headers: { 'Authorization': `Bearer ${token}` } })
+      fetch(`${API_BASE}/api/urls`, { headers: { 'Authorization': `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data) setUrls(data); })
         .catch(() => { });
@@ -145,7 +147,7 @@ export default function Dashboard({ user, token, onLogout }) {
     setLoadingUrls(true);
     setError('');
     try {
-      const res = await fetch('/api/urls', {
+      const res = await fetch(`${API_BASE}/api/urls`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -170,7 +172,7 @@ export default function Dashboard({ user, token, onLogout }) {
     if (!newLongUrl) return;
 
     try {
-      const res = await fetch('/api/urls', {
+      const res = await fetch(`${API_BASE}/api/urls`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +217,7 @@ export default function Dashboard({ user, token, onLogout }) {
   // Quick toggle isActive without opening modal
   const handleToggleActive = async (url) => {
     try {
-      const res = await fetch(`/api/urls/${url.id}`, {
+      const res = await fetch(`${API_BASE}/api/urls/${url.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ isActive: !url.isActive })
@@ -228,11 +230,11 @@ export default function Dashboard({ user, token, onLogout }) {
   // Export analytics CSV for a URL
   const handleExportCsv = (urlId) => {
     const a = document.createElement('a');
-    a.href = `/api/urls/${urlId}/analytics/export`;
+    a.href = `${API_BASE}/api/urls/${urlId}/analytics/export`;
     a.setAttribute('download', '');
     // Pass auth by query param since it's a direct download link
     // Instead, open in same tab (the server sets Content-Disposition)
-    window.open(`/api/urls/${urlId}/analytics/export`, '_blank');
+    window.open(`${API_BASE}/api/urls/${urlId}/analytics/export`, '_blank');
   };
 
   // API Call: Update URL
@@ -249,7 +251,7 @@ export default function Dashboard({ user, token, onLogout }) {
       };
       // Only send password field if user typed something (empty string = remove password)
       if (editPassword !== '') body.password = editPassword;
-      const res = await fetch(`/api/urls/${editingUrl.id}`, {
+      const res = await fetch(`${API_BASE}/api/urls/${editingUrl.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(body)
@@ -275,7 +277,7 @@ export default function Dashboard({ user, token, onLogout }) {
     if (!confirm('Are you sure you want to delete this short link? All click analytics history will be lost.')) return;
 
     try {
-      const res = await fetch(`/api/urls/${urlId}`, {
+      const res = await fetch(`${API_BASE}/api/urls/${urlId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -295,7 +297,7 @@ export default function Dashboard({ user, token, onLogout }) {
   const fetchAnalytics = async (urlId) => {
     setLoadingAnalytics(true);
     try {
-      const res = await fetch(`/api/urls/${urlId}/analytics`, {
+      const res = await fetch(`${API_BASE}/api/urls/${urlId}/analytics`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
