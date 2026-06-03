@@ -1,4 +1,4 @@
-import { Link2, LayoutDashboard, BarChart3, QrCode, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Link2, LayoutDashboard, BarChart3, QrCode, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export default function Sidebar({ activeTab, handleTabChange, currentUser, setAnalyticsData, isLocked, setIsLocked, isMobileOpen, setIsMobileOpen }) {
   const isOpen = isLocked;
@@ -68,32 +68,6 @@ export default function Sidebar({ activeTab, handleTabChange, currentUser, setAn
         ))}
       </nav>
 
-      {/* Footer (Profile item matching image position instead of logout) */}
-      <div className="sidebar-footer">
-        <hr className="sidebar-divider" />
-        <div
-          className={`sidebar-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-          onClick={() => {
-            handleTabChange('profile');
-            if (setAnalyticsData) {
-              setAnalyticsData(null);
-            }
-            if (setIsMobileOpen) {
-              setIsMobileOpen(false);
-            }
-          }}
-          title="Profile"
-        >
-          <span className="nav-item-icon">
-            {currentUser?.profilePicture ? (
-              <img src={currentUser.profilePicture} alt="Avatar" style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <User size={20} />
-            )}
-          </span>
-          <span className="nav-item-text">Profile</span>
-        </div>
-      </div>
     </aside>
   );
 }
