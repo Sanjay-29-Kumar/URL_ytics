@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import loginSvg from './assets/login.svg';
 import shortenerSvg from './assets/link_shortener.svg';
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-export default function AuthPage({ mode, onBack, onSuccess }) {
+export default function AuthPage({ mode, onSuccess }) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -72,7 +74,7 @@ export default function AuthPage({ mode, onBack, onSuccess }) {
       {/* Left Column: Form Section */}
       <div className="auth-page-left">
         {/* Back Link */}
-        <button className="auth-back-btn" onClick={onBack}>
+        <button className="auth-back-btn" onClick={() => navigate('/')}>
           <ArrowLeft size={16} />
           <span>Back to home</span>
         </button>
@@ -185,14 +187,14 @@ export default function AuthPage({ mode, onBack, onSuccess }) {
             {activeTab === 'login' ? (
               <span>
                 Don't have an account?{' '}
-                <span className="form-link" onClick={() => { setActiveTab('signup'); setError(''); }}>
+                <span className="form-link" onClick={() => { navigate('/signup'); }}>
                   Sign up
                 </span>
               </span>
             ) : (
               <span>
                 Already have an account?{' '}
-                <span className="form-link" onClick={() => { setActiveTab('login'); setError(''); }}>
+                <span className="form-link" onClick={() => { navigate('/login'); }}>
                   Log in
                 </span>
               </span>

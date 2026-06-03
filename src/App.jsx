@@ -4,16 +4,18 @@ import Dashboard from './Dashboard.jsx';
 import AuthPage from './AuthPage.jsx';
 import ErrorPage from './ErrorPage.jsx';
 import PasswordUnlockPage from './PasswordUnlockPage.jsx';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import ProtectedRoute from './ProtectedRoute.jsx';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'login' | 'signup'
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [linkError, setLinkError] = useState(null); // 'link_disabled' | 'link_expired' | 'not_found' | 'server_error'
   const [unlockCode, setUnlockCode] = useState(null); // shortCode for password-protected links
+  const navigate = useNavigate();
 
   // Detect ?error= and ?unlock= params from redirect controller
   useEffect(() => {
@@ -76,7 +78,7 @@ function App() {
     localStorage.removeItem('urlytics_user');
     setToken(null);
     setUser(null);
-    setCurrentView('landing');
+    navigate('/');
   };
 
   if (checkingAuth) {
@@ -92,7 +94,10 @@ function App() {
     return (
       <PasswordUnlockPage
         shortCode={unlockCode}
-        onGoHome={() => setUnlockCode(null)}
+        onGoHome={() => {
+          setUnlockCode(null);
+          navigate('/');
+        }}
       />
     );
   }
@@ -102,38 +107,41 @@ function App() {
     return (
       <ErrorPage
         errorType={linkError}
-        onGoHome={() => setLinkError(null)}
+        onGoHome={() => {
+          setLinkError(null);
+          navigate('/');
+        }}
       />
     );
   }
 
-  // Dashboard takes precedence if logged in
-  if (user && token) {
-    return (
-      <Dashboard 
-        user={user} 
-        token={token} 
-        onLogout={handleLogout} 
-      />
-    );
-  }
-
-  // Standalone full page routing for guest sessions
-  if (currentView === 'login' || currentView === 'signup') {
-    return (
-      <AuthPage 
-        mode={currentView}
-        onBack={() => setCurrentView('landing')}
-        onSuccess={handleAuthSuccess}
-      />
-    );
-  }
-
-  // Default to Landing Page
   return (
-    <LandingPage 
-      onOpenAuth={(tab) => setCurrentView(tab)} 
-    />
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={
+        user ? <Navigate to="/dashboard" replace /> : <AuthPage mode="login" onSuccess={handleAuthSuccess} />
+      } />
+      <Route path="/signup" element={
+        user ? <Navigate to="/dashboard" replace /> : <AuthPage mode="signup" onSuccess={handleAuthSuccess} />
+      } />
+      <Route path="/dashboard" element={
+        <ProtectedRoute user={user} token={token}>
+          <Dashboard user={user} token={token} onLogout={handleLogout} />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/:tab" element={
+        <ProtectedRoute user={user} token={token}>
+          <Dashboard user={user} token={token} onLogout={handleLogout} />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/:tab/:urlId" element={
+        <ProtectedRoute user={user} token={token}>
+          <Dashboard user={user} token={token} onLogout={handleLogout} />
+        </ProtectedRoute>
+      } />
+      {/* Catch-all route */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

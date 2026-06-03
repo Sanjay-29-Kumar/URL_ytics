@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Plus, LogOut, Link2, Copy, Trash2, QrCode, BarChart3, ChevronLeft,
   Globe, Smartphone, Laptop, Tablet, AlertCircle, Calendar, ArrowRight,
@@ -10,7 +11,18 @@ import defaultProfilePng from './assets/profile.png';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function Dashboard({ user, token, onLogout }) {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { tab, urlId: routeUrlId } = useParams();
+  const navigate = useNavigate();
+  const activeTab = tab || 'dashboard';
+  const selectedUrlId = routeUrlId || null;
+
+  const handleTabChange = (newTab) => {
+    if (newTab === 'dashboard') {
+      navigate('/dashboard');
+    } else {
+      navigate(`/dashboard/${newTab}`);
+    }
+  };
   const [urls, setUrls] = useState([]);
 
   // Profile states
@@ -89,7 +101,7 @@ export default function Dashboard({ user, token, onLogout }) {
       reader.readAsDataURL(file);
     }
   };
-  const [selectedUrlId, setSelectedUrlId] = useState(null);
+  
   const [analyticsData, setAnalyticsData] = useState(null);
 
   // Link Builder states
@@ -284,7 +296,7 @@ export default function Dashboard({ user, token, onLogout }) {
       if (res.ok) {
         setUrls(urls.filter(u => u.id !== urlId));
         if (selectedUrlId === urlId) {
-          setSelectedUrlId(null);
+          
           setAnalyticsData(null);
         }
       }
@@ -444,10 +456,10 @@ export default function Dashboard({ user, token, onLogout }) {
                 key={item.id}
                 className={`sidebar-nav-item ${activeTab === item.id ? 'active' : ''}`}
                 onClick={() => {
-                  setActiveTab(item.id);
+                  handleTabChange(item.id);
                   if (item.id !== 'analytics') {
                     // Reset selected url context if switching away to another page
-                    setSelectedUrlId(null);
+                    
                     setAnalyticsData(null);
                   }
                 }}
@@ -465,8 +477,8 @@ export default function Dashboard({ user, token, onLogout }) {
             <div
               className={`sidebar-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
               onClick={() => {
-                setActiveTab('profile');
-                setSelectedUrlId(null);
+                handleTabChange('profile');
+                
                 setAnalyticsData(null);
               }}
               title="Profile"
@@ -658,7 +670,7 @@ export default function Dashboard({ user, token, onLogout }) {
                               <button className="btn-icon-only" onClick={() => handleCopyLink(url.id, shortUrl)} title="Copy">
                                 {isCopied ? <Check size={16} style={{ color: 'var(--purple)' }} /> : <Copy size={16} />}
                               </button>
-                              <button className="btn-icon-only" onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }} title="Analytics">
+                              <button className="btn-icon-only" onClick={() => navigate('/dashboard/analytics/' + url.id)} title="Analytics">
                                 <BarChart3 size={16} />
                               </button>
                               <button className="btn-icon-only" onClick={() => handleToggleActive(url)} title={url.isActive === false ? 'Enable' : 'Disable'}>
@@ -796,7 +808,7 @@ export default function Dashboard({ user, token, onLogout }) {
 
                             <button
                               className="btn-icon-only"
-                              onClick={() => { setSelectedUrlId(url.id); setActiveTab('analytics'); }}
+                              onClick={() => navigate('/dashboard/analytics/' + url.id)}
                               title="View Analytics"
                             >
                               <BarChart3 size={18} />
@@ -860,7 +872,7 @@ export default function Dashboard({ user, token, onLogout }) {
                             <div
                               key={url.id}
                               className="analytics-url-card"
-                              onClick={() => setSelectedUrlId(url.id)}
+                              onClick={() => navigate('/dashboard/analytics/' + url.id)}
                             >
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', minWidth: 0 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -906,7 +918,7 @@ export default function Dashboard({ user, token, onLogout }) {
                                   style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', borderRadius: '8px' }}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedUrlId(url.id);
+                                    navigate('/dashboard/analytics/' + url.id);
                                   }}
                                 >
                                   View Report
@@ -921,7 +933,7 @@ export default function Dashboard({ user, token, onLogout }) {
                 ) : (
                   /* Detailed Subview */
                   <div>
-                    <button className="btn-back" onClick={() => { setSelectedUrlId(null); setAnalyticsData(null); }}>
+                    <button className="btn-back" onClick={() => {  setAnalyticsData(null); }}>
                       <ChevronLeft size={18} /> Back to selection list
                     </button>
 

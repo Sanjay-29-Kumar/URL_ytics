@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link2, QrCode, BarChart3, Layers, Globe, Shield, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-export default function LandingPage({ onOpenAuth }) {
+export default function LandingPage() {
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   // Monitor scrolling to toggle header styling
   useEffect(() => {
@@ -33,10 +35,10 @@ export default function LandingPage({ onOpenAuth }) {
             </nav>
 
             <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button className="btn-signin" onClick={() => onOpenAuth('login')}>
+              <button className="btn-signin" onClick={() => navigate('/login')}>
                 Sign in
               </button>
-              <button className="btn-primary" onClick={() => onOpenAuth('signup')}>
+              <button className="btn-primary" onClick={() => navigate('/signup')}>
                 Sign Up
               </button>
             </div>
@@ -57,9 +59,9 @@ export default function LandingPage({ onOpenAuth }) {
             </p>
 
             <div className="cta-buttons" style={{ marginBottom: '1rem' }}>
-              <button className="btn-large btn-primary" onClick={() => onOpenAuth('signup')}>
-                Get Started Free
-              </button>
+                <button className="btn-primary" onClick={() => navigate('/signup')} style={{ padding: '0.9rem 1.8rem', fontSize: '1.05rem', marginTop: '1rem' }}>
+                  Get Started for Free
+                </button>
               <a href="#features" className="btn-large btn-secondary">
                 Explore Features
               </a>
@@ -178,7 +180,7 @@ export default function LandingPage({ onOpenAuth }) {
         <div className="container">
           <h2>Ready to Supercharge Your Link Performance?</h2>
           <p>Join thousands of marketers, content creators, and corporate brands who trust URLytics to deliver clean links and real-time statistics.</p>
-          <button className="btn-large btn-white" onClick={() => onOpenAuth('signup')}>
+          <button className="btn-large btn-white" onClick={() => navigate('/signup')}>
             Get Started Free
           </button>
           <p className="cta-note">No credit card required • Free plan forever • Upgrade anytime</p>
