@@ -9,6 +9,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [urls, setUrls] = useState([]);
+  const [hasFetchedUrls, setHasFetchedUrls] = useState(false);
   const [linkError, setLinkError] = useState(null); // 'link_disabled' | 'link_expired' | 'not_found' | 'server_error'
   const [unlockCode, setUnlockCode] = useState(null); // shortCode for password-protected links
   const navigate = useNavigate();
@@ -70,6 +72,8 @@ function App() {
     localStorage.removeItem('urlytics_user');
     setToken(null);
     setUser(null);
+    setUrls([]);
+    setHasFetchedUrls(false);
     navigate('/');
   };
 
@@ -113,6 +117,10 @@ function App() {
       token={token}
       handleAuthSuccess={handleAuthSuccess}
       handleLogout={handleLogout}
+      urls={urls}
+      setUrls={setUrls}
+      hasFetchedUrls={hasFetchedUrls}
+      setHasFetchedUrls={setHasFetchedUrls}
     />
   );
 }

@@ -4,7 +4,16 @@ import Dashboard from '../pages/Dashboard.jsx';
 import AuthPage from '../pages/AuthPage.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
 
-export default function AppRoutes({ user, token, handleAuthSuccess, handleLogout }) {
+export default function AppRoutes({
+  user,
+  token,
+  handleAuthSuccess,
+  handleLogout,
+  urls,
+  setUrls,
+  hasFetchedUrls,
+  setHasFetchedUrls
+}) {
   return (
     <Routes>
       <Route path="/" element={
@@ -18,17 +27,41 @@ export default function AppRoutes({ user, token, handleAuthSuccess, handleLogout
       } />
       <Route path="/dashboard" element={
         <ProtectedRoute user={user} token={token}>
-          <Dashboard user={user} token={token} onLogout={handleLogout} />
+          <Dashboard
+            user={user}
+            token={token}
+            onLogout={handleLogout}
+            urls={urls}
+            setUrls={setUrls}
+            hasFetchedUrls={hasFetchedUrls}
+            setHasFetchedUrls={setHasFetchedUrls}
+          />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/:tab" element={
         <ProtectedRoute user={user} token={token}>
-          <Dashboard user={user} token={token} onLogout={handleLogout} />
+          <Dashboard
+            user={user}
+            token={token}
+            onLogout={handleLogout}
+            urls={urls}
+            setUrls={setUrls}
+            hasFetchedUrls={hasFetchedUrls}
+            setHasFetchedUrls={setHasFetchedUrls}
+          />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/:tab/:urlId" element={
         <ProtectedRoute user={user} token={token}>
-          <Dashboard user={user} token={token} onLogout={handleLogout} />
+          <Dashboard
+            user={user}
+            token={token}
+            onLogout={handleLogout}
+            urls={urls}
+            setUrls={setUrls}
+            hasFetchedUrls={hasFetchedUrls}
+            setHasFetchedUrls={setHasFetchedUrls}
+          />
         </ProtectedRoute>
       } />
       {/* Catch-all route */}

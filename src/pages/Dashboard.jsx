@@ -20,7 +20,15 @@ import {
 } from '../services/urlService';
 import { updateProfile as apiUpdateProfile } from '../services/authService';
 
-export default function Dashboard({ user, token, onLogout }) {
+export default function Dashboard({
+  user,
+  token,
+  onLogout,
+  urls,
+  setUrls,
+  hasFetchedUrls,
+  setHasFetchedUrls
+}) {
   const { tab, urlId: routeUrlId } = useParams();
   const navigate = useNavigate();
   const activeTab = tab || 'dashboard';
@@ -33,7 +41,6 @@ export default function Dashboard({ user, token, onLogout }) {
       navigate(`/dashboard/${newTab}`);
     }
   };
-  const [urls, setUrls] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Profile states
@@ -114,7 +121,7 @@ export default function Dashboard({ user, token, onLogout }) {
   // Interactive UI states
   const [activeQrId, setActiveQrId] = useState(null);
   const [copiedUrlId, setCopiedUrlId] = useState(null);
-  const [loadingUrls, setLoadingUrls] = useState(false);
+  const [loadingUrls, setLoadingUrls] = useState(!hasFetchedUrls);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -154,11 +161,14 @@ export default function Dashboard({ user, token, onLogout }) {
 
   // API Call: Fetch URLs for the user
   const fetchUrls = async () => {
-    setLoadingUrls(true);
+    if (!hasFetchedUrls) {
+      setLoadingUrls(true);
+    }
     setError('');
     try {
       const data = await getUrls(token);
       setUrls(data);
+      setHasFetchedUrls(true);
     } catch (err) {
       setError(err.message || 'Connection failed. Could not fetch URLs.');
     } finally {
@@ -304,12 +314,13 @@ export default function Dashboard({ user, token, onLogout }) {
 
     return (
       <ThemeProvider theme={lightTheme}>
-        <div style={{ width: '100%', height: 350, backgroundColor: '#ffffff', borderRadius: '8px', padding: '16px' }}>
+        <div style={{ width: '100%', height: 300, position: 'relative' }}>
           <LineChart
             xAxis={[{
               data: xData,
               scaleType: 'time',
-              valueFormatter: (value) => value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              ticks: xData,
+              valueFormatter: (value) => value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
               tickLabelStyle: { fill: '#64748b' }
             }]}
             yAxis={[{
@@ -1225,7 +1236,7 @@ export default function Dashboard({ user, token, onLogout }) {
             <div className="edit-modal-overlay" onClick={() => setEditingUrl(null)}>
               <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="edit-modal-header">
-                  <h3><Pencil size={18} style={{ color: 'var(--purple)' }} /> Edit Link</h3>
+                  <h3>Edit Link</h3>
                   <button className="edit-modal-close" onClick={() => setEditingUrl(null)}>
                     <X size={20} />
                   </button>
@@ -1255,10 +1266,7 @@ export default function Dashboard({ user, token, onLogout }) {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      <Clock size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
-                      Expiration
-                    </label>
+                    <label>Expiration</label>
                     <input
                       type="datetime-local"
                       className="form-input"
@@ -1277,15 +1285,12 @@ export default function Dashboard({ user, token, onLogout }) {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      <Shield size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
-                      Password
-                    </label>
+                    <label>Password</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         type={showEditPassword ? 'text' : 'password'}
                         className="form-input"
-                        value={editPassword}
+                        value={editPassword === null ? '' : editPassword}
                         onChange={(e) => setEditPassword(e.target.value)}
                         placeholder={editingUrl?.password ? 'Enter new password to change, or leave blank to keep' : 'Set a password to protect this link'}
                         style={{ paddingRight: '2.5rem' }}
@@ -1295,17 +1300,24 @@ export default function Dashboard({ user, token, onLogout }) {
                         {showEditPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    {editingUrl?.password && (
-                      <button type="button" onClick={() => setEditPassword('')}
+                    {editingUrl?.password && editPassword !== null ? (
+                      <button type="button" onClick={() => setEditPassword(null)}
                         style={{ fontSize: '0.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.3rem', padding: 0, fontWeight: 600 }}>
-                        Remove password protection (type nothing and save)
+                        Remove password protection
                       </button>
-                    )}
+                    ) : editPassword === null ? (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', display: 'block', marginTop: '0.3rem', fontWeight: 600 }}>
+                        Password protection will be removed. Save changes to confirm.
+                      </span>
+                    ) : null}
                   </div>
 
-                  <div className="form-group">
-                    <label><Power size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> Link Status</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.3rem' }}>
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                    <label style={{ margin: 0 }}>Link Status</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: editIsActive ? 'var(--purple)' : '#94a3b8' }}>
+                        {editIsActive ? 'Enabled — link is active' : 'Disabled — link is paused'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => setEditIsActive(a => !a)}
@@ -1314,9 +1326,6 @@ export default function Dashboard({ user, token, onLogout }) {
                       >
                         <span className="toggle-thumb" />
                       </button>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: editIsActive ? '#10b981' : '#94a3b8' }}>
-                        {editIsActive ? 'Enabled — link is active' : 'Disabled — link is paused'}
-                      </span>
                     </div>
                   </div>
                 </div>

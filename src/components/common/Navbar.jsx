@@ -33,19 +33,20 @@ export default function Navbar({ activeTab, searchQuery, setSearchQuery, current
         </h2>
       </div>
 
-      <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        {activeTab === 'links' && (
-          <div className="navbar-search-container">
-            <Search size={16} className="navbar-search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search links by title, url or shortcode..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="navbar-search-input"
-            />
-          </div>
-        )}
+      {activeTab === 'links' && (
+        <div className="navbar-search-container">
+          <Search size={16} className="navbar-search-icon" />
+          <input 
+            type="text" 
+            placeholder="Search links by title, url or shortcode..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="navbar-search-input"
+          />
+        </div>
+      )}
+
+      <div className="navbar-right">
         {/* User Email Badge */}
         <div className="user-badge-wrap">
           {currentUser?.profilePicture ? (

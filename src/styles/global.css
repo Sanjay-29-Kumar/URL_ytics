@@ -2166,15 +2166,14 @@ body {
   }
 
   .navbar-right {
-    width: 100% !important;
-    justify-content: space-between !important;
-    flex-direction: row-reverse !important;
-    gap: 0.75rem !important;
+    display: flex !important;
     align-items: center !important;
+    gap: 0.75rem !important;
+    margin-left: auto !important;
   }
 
   .user-badge-wrap {
-    margin-left: auto !important;
+    margin-left: 0 !important;
   }
 
   .navbar-search-container {
@@ -2221,6 +2220,11 @@ body {
   .visits-table td {
     padding: 0.5rem 0.25rem !important;
     font-size: 0.78rem !important;
+  }
+
+  .timeline-card,
+  .analytics-card {
+    padding: 1rem 0.75rem !important;
   }
 }
 
@@ -2567,7 +2571,7 @@ input[type="datetime-local"].form-input::-webkit-calendar-picker-indicator {
 }
 
 .toggle-switch--on {
-  background: #10b981;
+  background: var(--purple);
 }
 
 .toggle-thumb {
