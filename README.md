@@ -6,6 +6,12 @@ This project is a part of a hackathon run by https://katomaran.com.
 
 ---
 
+## 🎥 Project Explanation Video
+Watch the comprehensive video walkthrough demonstrating the project structure, features, and implementation:
+👉 **[URLytics Project Explanation & Feature Walkthrough](https://drive.google.com/file/d/1_Sro_lF-zvguos27NHhFe5K69E9abhlL/view?usp=drive_link)**
+
+---
+
 ## 📋 Table of Contents
 1. [Core Features](#-core-features)
 2. [Technical Architecture & Diagrams](#-technical-architecture--diagrams)
