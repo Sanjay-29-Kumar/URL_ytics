@@ -49,12 +49,22 @@ app.get('/', (req, res) => {
   res.status(200).send('URLytics Backend API is running.');
 });
 
+// Serve static assets from the Vite build directory
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
 // Catch-all for unknown routes
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API Endpoint not found' });
   }
-  res.status(404).send('Not Found');
+  
+  // Fallback to index.html for client-side SPA routing (React Router)
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) {
+      res.status(404).send('Not Found');
+    }
+  });
 });
 
 // Start Express Server
