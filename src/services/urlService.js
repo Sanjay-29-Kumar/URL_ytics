@@ -1,14 +1,36 @@
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+const handleResponse = async (res) => {
+  const contentType = res.headers.get('content-type') || '';
+  let data = null;
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+  } else {
+    const text = await res.text();
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { error: text || 'Server connection error.' };
+    }
+  }
+
+  if (!res.ok) {
+    const errorMsg = data?.error || data?.message || `Server returned error (${res.status})`;
+    throw new Error(errorMsg);
+  }
+
+  return data;
+};
+
 export const getUrls = async (token) => {
   const res = await fetch(`${API_BASE}/api/urls`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to fetch URLs');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const createUrl = async (token, payload) => {
@@ -20,11 +42,7 @@ export const createUrl = async (token, payload) => {
     },
     body: JSON.stringify(payload)
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to create short link');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const updateUrl = async (token, urlId, payload) => {
@@ -36,11 +54,7 @@ export const updateUrl = async (token, urlId, payload) => {
     },
     body: JSON.stringify(payload)
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to update link');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const deleteUrl = async (token, urlId) => {
@@ -48,22 +62,14 @@ export const deleteUrl = async (token, urlId) => {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to delete link');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const getAnalytics = async (token, urlId) => {
   const res = await fetch(`${API_BASE}/api/urls/${urlId}/analytics`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to fetch analytics');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const getExportCsvUrl = (urlId) => {
@@ -79,9 +85,15 @@ export const bulkCreateUrls = async (token, urls) => {
     },
     body: JSON.stringify({ urls })
   });
+  return handleResponse(res);
+};
+
+export const exportAnalyticsCsv = async (token, urlId) => {
+  const res = await fetch(`${API_BASE}/api/urls/${urlId}/analytics/export`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
   if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to create bulk short links');
+    throw new Error('Failed to export CSV');
   }
-  return res.json();
+  return res.blob();
 };

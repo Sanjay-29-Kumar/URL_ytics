@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link2, QrCode, BarChart3, Layers, Globe, Shield, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -220,9 +220,9 @@ export default function LandingPage() {
           </div>
 
           <div className="footer-bottom">
-            <a href='https://buildwithmk.app' style={{ textDecoration: 'none', color: '#e6d8d890' }}>buildwithmk.app</a>
+            <span style={{ color: '#e6d8d890' }}>URLytics</span>
             <div className="social-links">
-              <a href="https://github.com/murali2277/urlytics" style={{ textDecoration: 'none', color: '#e6d8d890' }}>GitHub</a>
+              <a href="https://github.com/Sanjay-29-Kumar/URL_ytics" style={{ textDecoration: 'none', color: '#e6d8d890' }}>GitHub</a>
             </div>
           </div>
         </div>
@@ -230,3 +230,4 @@ export default function LandingPage() {
     </div>
   );
 }
+

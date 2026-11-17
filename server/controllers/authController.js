@@ -1,8 +1,10 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'urlytics_jwt_super_secret_key_12345';
+const getJwtSecret = () => process.env.JWT_SECRET || 'urlytics_jwt_super_secret_key_sanjay_2026';
+const getGoogleClient = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const register = async (req, res) => {
   const { email, password } = req.body;
@@ -26,7 +28,7 @@ export const register = async (req, res) => {
     });
     await newUser.save();
 
-    const token = jwt.sign({ id: newUser.id, email: newUser.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: newUser.id, email: newUser.email }, getJwtSecret(), { expiresIn: '7d' });
     res.status(201).json({
       token,
       user: {
@@ -57,12 +59,16 @@ export const login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
+    if (!user.passwordHash) {
+      return res.status(400).json({ error: 'This account was registered using Google. Please sign in with Google.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' });
     res.json({
       token,
       user: {
@@ -77,6 +83,92 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
+  }
+};
+
+export const googleAuth = async (req, res) => {
+  const { credential, accessToken } = req.body;
+  if (!credential && !accessToken) {
+    return res.status(400).json({ error: 'Google credential or access token is required' });
+  }
+
+  try {
+    let email, name, picture, googleId;
+
+    if (credential) {
+      const googleClient = getGoogleClient();
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      const payload = ticket.getPayload();
+      googleId = payload.sub;
+      email = payload.email;
+      name = payload.name;
+      picture = payload.picture;
+    } else if (accessToken) {
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch user info from Google');
+      }
+      const data = await response.json();
+      googleId = data.sub;
+      email = data.email;
+      name = data.name;
+      picture = data.picture;
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: 'Unable to retrieve email from Google account' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      user = new User({
+        email: normalizedEmail,
+        googleId,
+        name: name || '',
+        profilePicture: picture || ''
+      });
+      await user.save();
+    } else {
+      let needsSave = false;
+      if (!user.googleId) {
+        user.googleId = googleId;
+        needsSave = true;
+      }
+      if (!user.name && name) {
+        user.name = name;
+        needsSave = true;
+      }
+      if (!user.profilePicture && picture) {
+        user.profilePicture = picture;
+        needsSave = true;
+      }
+      if (needsSave) {
+        await user.save();
+      }
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' });
+    res.status(200).json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        profilePicture: user.profilePicture,
+        smsAlerts: user.smsAlerts
+      }
+    });
+  } catch (error) {
+    console.error('Google authentication error:', error);
+    res.status(500).json({ error: 'Google authentication failed' });
   }
 };
 

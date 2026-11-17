@@ -2,13 +2,6 @@
 
 URLytics is a premium, self-hosted URL shortener application equipped with real-time visitor analytics, geolocation lookup, access controls (expiration & password protection), and a sleek modern dashboard interface.
 
-This project is a part of a hackathon run by https://katomaran.com.
-
----
-
-## Project Explanation Video
-Watch the comprehensive video walkthrough demonstrating the project structure, features, and implementation:
-[URLytics Project Explanation & Feature Walkthrough](https://drive.google.com/file/d/1_Sro_lF-zvguos27NHhFe5K69E9abhlL/view?usp=drive_link)
 
 ---
 
@@ -297,7 +290,3 @@ For production redirection to function correctly, make sure these environment se
 ### 3. Password Removal fails to persist
 *   **Cause:** Omit-checks on empty strings (`''`) in update requests prevented the frontend from telling the backend to clear the password parameter.
 *   **Resolution:** Implemented explicit `null` signaling. Setting the password input to `null` sends a clear instruction to the database to remove protection.
-
----
-
-This project is a part of a hackathon run by https://katomaran.com

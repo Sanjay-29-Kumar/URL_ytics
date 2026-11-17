@@ -3,8 +3,9 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import loginSvg from '../assets/login.svg';
 import shortenerSvg from '../assets/link_shortener.svg';
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import AuthLayout from '../layouts/AuthLayout';
-import { login as apiLogin, register as apiRegister } from '../services/authService';
+import { login as apiLogin, register as apiRegister, googleLogin as apiGoogleLogin } from '../services/authService';
 
 export default function AuthPage({ mode, onSuccess }) {
   const navigate = useNavigate();
@@ -53,12 +54,42 @@ export default function AuthPage({ mode, onSuccess }) {
       localStorage.setItem('urlytics_user', JSON.stringify(data.user));
 
       onSuccess(data.token, data.user);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'An error occurred during authentication');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiGoogleLogin({ accessToken: tokenResponse.access_token });
+
+      // Save token and user details to local storage
+      localStorage.setItem('urlytics_token', data.token);
+      localStorage.setItem('urlytics_user', JSON.stringify(data.user));
+
+      onSuccess(data.token, data.user);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err.message || 'Google authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = (err) => {
+    console.error('Google sign-in error:', err);
+    setError('Google sign-in was cancelled or encountered an error.');
+  };
+
+  const triggerGoogleLogin = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: handleGoogleError,
+  });
 
   return (
     <AuthLayout>
@@ -162,7 +193,12 @@ export default function AuthPage({ mode, onSuccess }) {
             </button>
 
             {/* Google OAuth Button */}
-            <button type="button" className="btn-google" onClick={() => alert('Google authentication is mock simulated!')}>
+            <button
+              type="button"
+              className="btn-google"
+              onClick={() => triggerGoogleLogin()}
+              disabled={loading}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />

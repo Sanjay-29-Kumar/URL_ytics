@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 
+const getJwtSecret = () => process.env.JWT_SECRET || 'urlytics_jwt_super_secret_key_sanjay_2026';
+
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
@@ -8,9 +10,7 @@ export const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  const JWT_SECRET = process.env.JWT_SECRET || 'urlytics_jwt_super_secret_key_12345';
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, getJwtSecret(), (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }

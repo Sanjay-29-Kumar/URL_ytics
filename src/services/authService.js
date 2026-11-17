@@ -1,16 +1,38 @@
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+const handleResponse = async (res) => {
+  const contentType = res.headers.get('content-type') || '';
+  let data = null;
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+  } else {
+    const text = await res.text();
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { error: text || 'Server connection error. Make sure the backend server is running.' };
+    }
+  }
+
+  if (!res.ok) {
+    const errorMsg = data?.error || data?.message || `Server returned error (${res.status})`;
+    throw new Error(errorMsg);
+  }
+
+  return data;
+};
+
 export const login = async (email, password) => {
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Authentication failed');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const register = async (email, password) => {
@@ -19,22 +41,24 @@ export const register = async (email, password) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Authentication failed');
-  }
-  return res.json();
+  return handleResponse(res);
+};
+
+export const googleLogin = async (payload) => {
+  const body = typeof payload === 'string' ? { credential: payload } : payload;
+  const res = await fetch(`${API_BASE}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return handleResponse(res);
 };
 
 export const getMe = async (token) => {
   const res = await fetch(`${API_BASE}/api/auth/me`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to verify session');
-  }
-  return res.json();
+  return handleResponse(res);
 };
 
 export const updateProfile = async (token, payload) => {
@@ -46,9 +70,5 @@ export const updateProfile = async (token, payload) => {
     },
     body: JSON.stringify(payload)
   });
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error || 'Failed to update profile');
-  }
-  return res.json();
+  return handleResponse(res);
 };

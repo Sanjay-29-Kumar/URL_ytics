@@ -306,6 +306,10 @@ export default function Dashboard({
       setUrls(data);
       setHasFetchedUrls(true);
     } catch (err) {
+      if (err.message && (err.message.includes('token') || err.message.includes('403') || err.message.includes('401'))) {
+        onLogout();
+        return;
+      }
       setError(err.message || 'Connection failed. Could not fetch URLs.');
     } finally {
       setLoadingUrls(false);

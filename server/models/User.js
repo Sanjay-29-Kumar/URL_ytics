@@ -10,7 +10,11 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: {
     type: String,
-    required: [true, 'Password hash is required']
+    default: null
+  },
+  googleId: {
+    type: String,
+    default: null
   },
   name: {
     type: String,
@@ -47,4 +51,3 @@ userSchema.set('toJSON', {
 
 const User = mongoose.model('User', userSchema);
 export default User;
-

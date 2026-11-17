@@ -37,7 +37,11 @@ function App() {
 
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        setUser(null);
+      }
       
       // Verify session integrity with server
       verifySession(storedToken);
@@ -51,11 +55,8 @@ function App() {
       const data = await getMe(authToken);
       setUser(data.user);
     } catch (e) {
-      console.warn('Could not verify session with server, keeping local session cache');
-      // If we got an error that is not a connection issue, handle logout
-      if (e.message && e.message !== 'Failed to verify session') {
-        handleLogout();
-      }
+      console.warn('Session verification failed, clearing stale session:', e.message);
+      handleLogout();
     } finally {
       setCheckingAuth(false);
     }
@@ -64,7 +65,7 @@ function App() {
   const handleAuthSuccess = (newToken, newUser) => {
     setToken(newToken);
     setUser(newUser);
-    // User is redirect to dashboard automatically
+    navigate('/dashboard', { replace: true });
   };
 
   const handleLogout = () => {

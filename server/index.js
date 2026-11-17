@@ -1,14 +1,6 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
 import connectDB from './config/db.js';
 import apiRouter from './routes/index.js';
 import { handleRedirect, handlePasswordUnlock } from './controllers/redirectController.js';
@@ -49,25 +41,7 @@ app.get('/', (req, res) => {
   res.status(200).send('URLytics Backend API is running.');
 });
 
-// Serve static assets from the Vite build directory
-const distPath = path.join(__dirname, '../dist');
-app.use(express.static(distPath));
-
-// Catch-all for unknown routes
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'API Endpoint not found' });
-  }
-  
-  // Fallback to index.html for client-side SPA routing (React Router)
-  res.sendFile(path.join(distPath, 'index.html'), (err) => {
-    if (err) {
-      res.status(404).send('Not Found');
-    }
-  });
-});
-
-// Start Express Server
+// Start Express HTTP Server
 app.listen(PORT, () => {
   console.log(`URLytics backend server running on port ${PORT}`);
 });
