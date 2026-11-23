@@ -17,7 +17,7 @@ export default function PasswordUnlockPage({ shortCode, onGoHome }) {
     setError('');
 
     try {
-      const apiBase = import.meta.env.VITE_API_URL || '';
+      const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
       const res = await fetch(`${apiBase}/r/${shortCode}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

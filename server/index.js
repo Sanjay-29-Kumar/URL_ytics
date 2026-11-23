@@ -16,6 +16,14 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Normalize duplicate slashes in URL paths (e.g. //api -> /api)
+app.use((req, res, next) => {
+  if (req.url.includes('//')) {
+    req.url = req.url.replace(/\/+/g, '/');
+  }
+  next();
+});
+
 // Logger middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
